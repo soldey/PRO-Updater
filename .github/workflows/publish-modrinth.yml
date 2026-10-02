@@ -1,0 +1,71 @@
+name: Publish to Modrinth
+
+# Publishes a version that already exists as a GitHub release. Meant as a retry button for when
+# the Modrinth API fails during a release. Run it from the Actions tab with a version like 1.0.1
+# and the Minecraft target that failed.
+#
+# Do not use it to backfill old versions: Modrinth orders the version list by publication date,
+# so an older version uploaded later ends up sitting above the current one.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to publish, without the leading v (for example 1.0.1)
+        required: true
+        type: string
+      target:
+        description: Minecraft target of the jar
+        required: true
+        type: choice
+        options:
+          - '26.1'
+          - '26.2'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      # The tag, so mc-publish reads the fabric.mod.json that shipped with this version.
+      - uses: actions/checkout@v7
+        with:
+          ref: v${{ inputs.version }}
+
+      - name: Fetch the released jar and its notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+          TARGET: ${{ inputs.target }}
+        run: |
+          mkdir -p build/libs
+          gh release download "v$VERSION" \
+            --pattern "pro-updater-$VERSION+mc$TARGET.jar" \
+            --dir build/libs
+          gh release view "v$VERSION" --json body --jq .body > /tmp/notes.md
+          # Each target covers every patch release of its line.
+          if [ "$TARGET" = "26.1" ]; then
+            printf '26.1\n26.1.1\n26.1.2\n' > /tmp/game-versions
+          else
+            printf '%s\n' "$TARGET" > /tmp/game-versions
+          fi
+          {
+            echo "GAME_VERSIONS<<EOF"
+            cat /tmp/game-versions
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Publish to Modrinth
+        uses: Kira-NT/mc-publish@v3.3.1
+        with:
+          modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          files: build/libs/pro-updater-${{ inputs.version }}+mc${{ inputs.target }}.jar
+          name: PRO-Updater ${{ inputs.version }} for ${{ inputs.target }}
+          version: ${{ inputs.version }}+mc${{ inputs.target }}
+          version-type: release
+          changelog-file: /tmp/notes.md
+          loaders: fabric
+          game-versions: ${{ env.GAME_VERSIONS }}
+          java: 25

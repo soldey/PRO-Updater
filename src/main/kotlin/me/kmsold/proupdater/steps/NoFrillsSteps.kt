@@ -1,0 +1,125 @@
+package me.kmsold.proupdater.steps
+
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
+import me.kmsold.proupdater.core.EditResult
+import me.kmsold.proupdater.core.KeyNames
+import me.kmsold.proupdater.core.editJson
+
+private const val NOFRILLS = "nofrills"
+private const val CONFIG = "config/NoFrills/Configuration.json"
+
+private fun StepContext.reportEdit(result: EditResult, what: String) {
+    if (result == EditResult.MISSING || result == EditResult.UNREADABLE) {
+        log("$CONFIG is ${result.name.lowercase()}, $what skipped")
+        notice("proupdater.notice.configMissing", CONFIG)
+    }
+}
+
+/**
+ * `/eq`, `/wd` and `/trades` on keys through NoFrills custom keybinds
+ * (`customKeybinds.data.binds` in `config/NoFrills/Configuration.json`, keys as GLFW codes).
+ *
+ * Binds are matched by command, so the player's own binds stay and nothing is added twice.
+ * `allowInGui` stays false: minus is also Skyblocker's loadout slot 11, which only works inside
+ * the "Loadouts" window, so the two never meet.
+ */
+class NoFrillsCommandKeybindsStep : SetupStep {
+
+    override val id = "nofrills_command_keybinds"
+    override val version = 1
+    override val requiredMods = listOf(NOFRILLS)
+
+    /** The command written for a new bind, the commands that count as the same bind, the default key. */
+    data class Command(val option: String, val name: String, val command: String, val aliases: Set<String>, val defaultKey: String)
+
+    override val options = COMMANDS.map { StepOption(it.option, OptionKind.KEY, it.defaultKey, glfwOnly = true) }
+
+    override fun apply(context: StepContext, options: Map<String, String>) {
+        val values = resolve(options)
+        val result = context.files.editJson(CONFIG) { json ->
+            if (!json.setBoolean(listOf("customKeybinds", "enabled"), true)) return@editJson
+            val data = json.objectAt("customKeybinds", "data", create = true) ?: return@editJson
+            val binds = data.get("binds") as? JsonArray ?: JsonArray().also {
+                data.add("binds", it)
+                json.markChanged()
+            }
+            for (command in COMMANDS) {
+                if (upsert(binds, command, values.getValue(command.option))) json.markChanged()
+            }
+        }
+        context.reportEdit(result, "the command keybinds were")
+    }
+
+    /** Returns true when [binds] changed. */
+    private fun upsert(binds: JsonArray, command: Command, keyName: String): Boolean {
+        val code = KeyNames.glfwCode(keyName)
+        val existing = binds.filterIsInstance<JsonObject>().firstOrNull { bind ->
+            val text = bind.get("command")?.takeIf { it.isJsonPrimitive }?.asString?.trim()?.lowercase()
+            text != null && text in command.aliases
+        }
+        val bind = existing ?: JsonObject().also {
+            if (code == null) return false
+            it.addProperty("name", command.name)
+            it.addProperty("key", code)
+            it.addProperty("command", command.command)
+            it.addProperty("enabled", true)
+            it.addProperty("allowInGui", false)
+            it.addProperty("modifier", "Any")
+            it.addProperty("islandFilter", "")
+            binds.add(it)
+            return true
+        }
+        val before = bind.deepCopy()
+        if (code == null) {
+            // Unbound on the screen: the bind is kept, just switched off.
+            bind.addProperty("enabled", false)
+        } else {
+            bind.addProperty("key", code)
+            bind.addProperty("enabled", true)
+        }
+        bind.addProperty("allowInGui", false)
+        return bind != before
+    }
+
+    companion object {
+        val COMMANDS = listOf(
+            Command("equipment", "equipment", "/eq", setOf("/eq", "/equipment"), "key.keyboard.u"),
+            Command("wardrobe", "wardrobe", "/wd", setOf("/wd", "/wardrobe"), "key.keyboard.l"),
+            Command("trades", "trades", "/trades", setOf("/trades"), "key.keyboard.minus"),
+        )
+    }
+}
+
+/**
+ * Empties NoFrills slot bindings (`slotBinding.data.hotbar1` to `hotbar9`). The pack author's own
+ * bindings travel in the pack otherwise. The feature and its key stay as they are.
+ *
+ * Runs on a clean install and from the button only - never on its own after an update, or players
+ * would lose the bindings they made themselves.
+ */
+class NoFrillsSlotBindingsStep : SetupStep {
+
+    override val id = "nofrills_clear_slot_bindings"
+    override val version = 1
+    override val requiredMods = listOf(NOFRILLS)
+    override val offeredOnUpdate = false
+
+    override fun apply(context: StepContext, options: Map<String, String>) {
+        val result = context.files.editJson(CONFIG) { json ->
+            val data = json.objectAt("slotBinding", "data", create = true) ?: return@editJson
+            for (slot in 1..9) {
+                val current = data.get("hotbar$slot")
+                val cleared = ((current as? JsonObject)?.deepCopy() ?: JsonObject()).apply {
+                    addProperty("last", 0)
+                    add("binds", JsonArray())
+                }
+                if (cleared != current) {
+                    data.add("hotbar$slot", cleared)
+                    json.markChanged()
+                }
+            }
+        }
+        context.reportEdit(result, "clearing the slot bindings was")
+    }
+}

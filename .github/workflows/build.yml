@@ -1,0 +1,34 @@
+name: Build
+
+# Compile and test everything that lands on pre-release, without publishing anything.
+# Releases are cut by release.yml when pre-release is merged into main.
+on:
+  push:
+    branches: [pre-release]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Build every Minecraft target
+        run: |
+          for target in $(cat .github/mc-targets.txt); do
+            echo "::group::Minecraft $target"
+            ./gradlew build -PmcTarget="$target"
+            echo "::endgroup::"
+          done

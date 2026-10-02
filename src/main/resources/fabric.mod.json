@@ -1,0 +1,41 @@
+{
+    "schemaVersion": 1,
+    "id": "proupdater",
+    "version": "${version}",
+    "name": "PRO-Updater",
+    "icon": "assets/proupdater/icon.png",
+    "description": "Installs and keeps the Skyblock PRO modpack settings: lays them out on a fresh install, adds only missing files on pack updates, and sets up loadout keys, command keys and resource packs. Something broken? Send the log to soldey on Discord.",
+    "authors": [
+        "kmsold"
+    ],
+    "contact": {
+        "homepage": "https://github.com/soldey/PRO-Updater",
+        "sources": "https://github.com/soldey/PRO-Updater",
+        "issues": "https://github.com/soldey/PRO-Updater/issues"
+    },
+    "license": "LGPL-3.0-or-later",
+    "environment": "client",
+    "entrypoints": {
+        "preLaunch": [
+            "me.kmsold.proupdater.ProUpdaterPreLaunch"
+        ],
+        "client": [
+            {
+                "adapter": "kotlin",
+                "value": "me.kmsold.proupdater.ProUpdater"
+            }
+        ],
+        "modmenu": [
+            "me.kmsold.proupdater.compat.ModMenuIntegration"
+        ]
+    },
+    "depends": {
+        "fabricloader": ">=${fabricLoader}",
+        "fabric-api": "*",
+        "fabric-language-kotlin": ">=${fabricKotlin}",
+        "minecraft": "${minecraft}"
+    },
+    "recommends": {
+        "modmenu": "*"
+    }
+}
