@@ -62,17 +62,24 @@ class Installer(
                 Migrations.all.forEach { if (it.id !in state.migrations) state.migrations += it.id }
                 state.cleanInstallAt = timestamp.toOffsetDateTime().toString()
                 state.packVersion = manifest.version
-                context.notice("proupdater.notice.installed", manifest.version)
+                // The author's setup is in place straight away; the welcome screen lets the player keep,
+                // redo or undo it, which is why this run is always backed up.
+                state.welcomePending = true
+                state.preset = FirstRunChoice.AUTHOR
                 reasons += "clean-install"
             }
             LaunchMode.LEGACY_MIGRATION, LaunchMode.UPDATE -> {
-                layOut(PlanKind.UPDATE, manifest!!, files, state, context)
+                if (state.preset == FirstRunChoice.NONE) {
+                    context.log("The player chose to go without the pack settings, no pack files are added")
+                } else {
+                    layOut(PlanKind.UPDATE, manifest!!, files, state, context)
+                }
                 for (migration in Migrations.all.filter { it.id !in state.migrations }) {
                     context.log("Running migration ${migration.id}")
                     migration.apply(context)
                     state.migrations += migration.id
                 }
-                state.packVersion = manifest.version
+                state.packVersion = manifest!!.version
                 val packList = files.readText(GamePaths.RESOURCE_PACKS)?.let(ModelJson::resourcePacks)
                 if (Steps.all.any { it.isAvailable(isModLoaded) && Steps.isNew(it, state, packList) }) {
                     context.notice("proupdater.notice.newSteps")
@@ -90,11 +97,12 @@ class Installer(
         val changes = files.changed()
         val originals = files.originals()
         var backupName: String? = null
-        if (originals.isNotEmpty()) {
+        if (originals.isNotEmpty() || (mode == LaunchMode.CLEAN_INSTALL && changes.isNotEmpty())) {
             backupName = Backups.fileName(timestamp, reasons.joinToString("+").ifEmpty { "run" })
             val zip = Backups.zip(originals, files.created(), reasons.joinToString(", "), timestamp.toOffsetDateTime().toString())
             Backups.write(gameDir.resolve(GamePaths.BACKUPS), backupName, zip)
             context.log("Backed up ${originals.size} file(s) to ${GamePaths.BACKUPS}/$backupName")
+            if (mode == LaunchMode.CLEAN_INSTALL) state.cleanInstallBackup = backupName
         }
         disk.commit(changes)
         if (changes.isNotEmpty()) context.log("Wrote ${changes.size} file(s)")
@@ -125,17 +133,9 @@ class Installer(
     }
 
     private fun runPending(pending: PendingActions, manifest: Manifest?, files: FileChanges, state: InstallState, context: StepContext) {
+        pending.firstRunChoice?.let { choice -> runFirstRunChoice(choice, manifest, files, state, context) }
         pending.restoreBackup?.let { name ->
-            val zip = gameDir.resolve(GamePaths.BACKUPS).resolve(name)
-            val contents = if (GamePaths.isSafe(name) && '/' !in name) runCatching { Backups.unzip(zip.readBytes()) }.getOrNull() else null
-            if (contents == null) {
-                context.log("Backup $name is missing or unreadable, nothing restored")
-                context.notice("proupdater.notice.restoreFailed", name)
-            } else {
-                Backups.restore(contents, files)
-                context.log("Restored backup $name")
-                context.notice("proupdater.notice.restored", name)
-            }
+            if (restore(name, files, context)) context.notice("proupdater.notice.restored", name)
         }
         if (pending.applyPackDefaults) {
             if (manifest == null) {
@@ -143,6 +143,7 @@ class Installer(
             } else {
                 layOut(PlanKind.APPLY_ALL, manifest, files, state, context)
                 applyDefaultSteps(context, state)
+                state.preset = FirstRunChoice.AUTHOR
                 context.notice("proupdater.notice.packApplied", manifest.version)
             }
         }
@@ -158,5 +159,47 @@ class Installer(
                 }
             }
         }
+    }
+
+    /**
+     * The welcome screen's choice. Both undo the clean install first, so the result is the same as
+     * if the player had chosen before it: [FirstRunChoice.CUSTOM] then lays the pack files out
+     * again, without the default steps (the queued steps follow), [FirstRunChoice.NONE] stops there.
+     */
+    private fun runFirstRunChoice(choice: String, manifest: Manifest?, files: FileChanges, state: InstallState, context: StepContext) {
+        if (choice != FirstRunChoice.CUSTOM && choice != FirstRunChoice.NONE) {
+            context.log("Unknown first-run choice '$choice', ignored")
+            return
+        }
+        val backup = state.cleanInstallBackup
+        if (backup == null) {
+            context.log("No clean install backup to undo, the files stay as they are")
+        } else {
+            restore(backup, files, context)
+        }
+        if (choice == FirstRunChoice.CUSTOM) {
+            if (manifest == null) {
+                context.log("Custom setup asked for, but there is no ${GamePaths.MANIFEST}")
+            } else {
+                layOut(PlanKind.CLEAN_INSTALL, manifest, files, state, context)
+            }
+        }
+        context.log("First-run choice: $choice")
+        state.preset = choice
+        state.welcomePending = false
+    }
+
+    /** Queues the contents of backup [name] into [files]. Returns false when it could not be read. */
+    private fun restore(name: String, files: FileChanges, context: StepContext): Boolean {
+        val zip = gameDir.resolve(GamePaths.BACKUPS).resolve(name)
+        val contents = if (GamePaths.isSafe(name) && '/' !in name) runCatching { Backups.unzip(zip.readBytes()) }.getOrNull() else null
+        if (contents == null) {
+            context.log("Backup $name is missing or unreadable, nothing restored")
+            context.notice("proupdater.notice.restoreFailed", name)
+            return false
+        }
+        Backups.restore(contents, files)
+        context.log("Restored backup $name")
+        return true
     }
 }

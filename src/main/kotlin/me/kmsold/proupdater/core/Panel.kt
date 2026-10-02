@@ -59,6 +59,37 @@ class Panel(private val gameDir: Path, private val isModLoaded: (String) -> Bool
      */
     fun makeBackup(): String? = Backups.makeManual(gameDir, manifest, state, Backups.now())
 
+    /** A clean install happened and the player has not picked how to set up yet. */
+    val welcomePending: Boolean get() = state?.welcomePending == true
+
+    /** Switches on what the author's preset runs, with default keys: the starting point of a custom setup. */
+    fun selectAuthorDefaults() {
+        for (step in steps) {
+            selected[step.id] = step.enabledByDefault && isAvailable(step)
+            options.getValue(step.id).apply {
+                clear()
+                putAll(step.defaultOptions())
+            }
+        }
+    }
+
+    /** Keeps the author's setup the clean install already laid out. Takes effect at once, no restart. */
+    fun keepAuthorPreset() {
+        val updated = state ?: return
+        updated.welcomePending = false
+        updated.preset = FirstRunChoice.AUTHOR
+        DirectorySource(gameDir).commit(mapOf(GamePaths.STATE to ModelJson.write(updated).toByteArray(Charsets.UTF_8)))
+    }
+
+    /**
+     * Queues [FirstRunChoice.CUSTOM] with the switched-on steps, or [FirstRunChoice.NONE], for the
+     * next start. Anything queued before is replaced.
+     */
+    fun queueFirstRunChoice(choice: String) {
+        pending = PendingActions().also { it.firstRunChoice = choice }
+        if (choice == FirstRunChoice.CUSTOM) queueSelectedSteps() else save()
+    }
+
     /** Whether the setup screen has something new for this player. */
     fun hasNewSteps() = steps.any { isAvailable(it) && isNew(it) }
 

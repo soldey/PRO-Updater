@@ -24,10 +24,23 @@ files while you play would not stick.
 
 | Situation | What happens |
 | --- | --- |
-| Fresh install | All pack settings are copied, then the setup steps below run with their defaults. If Modrinth App already wrote an `options.txt` (game options sync), your values stay and only missing keys come from the pack. |
+| Fresh install | All pack settings are copied, then the setup steps below run with their defaults - the author's preset. If Modrinth App already wrote an `options.txt` (game options sync), your values stay and only missing keys come from the pack. Then the welcome screen asks how to go on. |
 | Pack update | Only files you do not have yet are added. Nothing you have is overwritten. New setup steps are offered on the screen, not applied. |
 | Coming from Skyblock PRO 3.3.x or older | Handled like an update. |
 | Same pack version | Nothing, apart from what you queued on the screen. |
+
+### The first start
+
+After a fresh install the game opens a welcome screen instead of the main menu, with three choices:
+
+* **Author's preset** - keep the setup that is already in place and play. No restart.
+* **Customize the author's preset** - the setup wizard below, with the author's choices as the
+  starting point. On the next start the pack settings are laid out again with only the steps you
+  picked, using your keys.
+* **Continue without setup** - on the next start the install is undone and every mod keeps its own
+  defaults. Later pack updates add no pack settings either; "Apply pack settings" brings them in.
+
+The screen shows up again on every start until a choice is made, and never after.
 
 Before any run that overwrites or deletes a file, the old files are zipped into
 `proupdater/backups/` (the newest 15 are kept).

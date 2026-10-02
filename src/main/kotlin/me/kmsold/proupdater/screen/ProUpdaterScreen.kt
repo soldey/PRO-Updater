@@ -110,9 +110,10 @@ class ProUpdaterScreen(
         val installed = panel.state?.packVersion?.let(Component::literal) ?: unknown
         val inPack = panel.manifest?.version?.let(Component::literal) ?: unknown
         val cleanInstall = panel.state?.cleanInstallAt?.let { Component.literal(it.take(16).replace('T', ' ')) } ?: unknown
+        val preset = panel.state?.preset?.let { Component.translatable("proupdater.screen.preset.$it") } ?: unknown
         return listOf(
             Component.translatable("proupdater.screen.versions", installed, inPack).withStyle(ChatFormatting.GRAY),
-            Component.translatable("proupdater.screen.cleanInstall", cleanInstall).withStyle(ChatFormatting.GRAY),
+            Component.translatable("proupdater.screen.cleanInstall", cleanInstall, preset).withStyle(ChatFormatting.GRAY),
         )
     }
 
@@ -127,6 +128,7 @@ class ProUpdaterScreen(
             val pending = panel.pending
             if (pending.isEmpty()) return Component.translatable("proupdater.screen.queue.empty").withStyle(ChatFormatting.GRAY)
             val parts = buildList {
+                pending.firstRunChoice?.let { add(Component.translatable("proupdater.screen.queue.firstRun.$it")) }
                 pending.restoreBackup?.let { add(Component.translatable("proupdater.screen.queue.restore", it.removeSuffix(".zip"))) }
                 if (pending.applyPackDefaults) add(Component.translatable("proupdater.screen.queue.applyPack"))
                 if (pending.steps.isNotEmpty()) add(Component.translatable("proupdater.screen.queue.steps", pending.steps.size.toString()))

@@ -2,6 +2,7 @@ package me.kmsold.proupdater
 
 import com.google.gson.JsonParser
 import me.kmsold.proupdater.core.Backups
+import me.kmsold.proupdater.core.FirstRunChoice
 import me.kmsold.proupdater.core.GamePaths
 import me.kmsold.proupdater.core.Hashes
 import me.kmsold.proupdater.core.Installer
@@ -92,7 +93,7 @@ class InstallerTest {
         val report = run()
 
         assertEquals(LaunchMode.CLEAN_INSTALL, report.mode)
-        assertNull(report.backup, "nothing existed, so nothing needed a backup")
+        assertNotNull(report.backup, "a clean install is always backed up, so the welcome screen can undo it")
         val options = read("options.txt")!!.lines()
         assertTrue("key_key.skyblocker.loadout.01:key.keyboard.1" in options)
         assertTrue("resourcePacks:[\"vanilla\",\"file/FurSky Reborn.cats.zip\"]" in options)
@@ -110,6 +111,77 @@ class InstallerTest {
         assertEquals(3, state.files.size)
         assertEquals(setOf("skyblocker_loadout", "nofrills_command_keybinds", "nofrills_clear_slot_bindings", "resource_packs", "attack_hold"), state.steps.keys)
         assertEquals(listOf("vanilla", "file/FurSky Reborn.cats.zip"), state.resourcePacks)
+        assertTrue(state.welcomePending)
+        assertEquals(report.backup, state.cleanInstallBackup)
+        assertEquals(FirstRunChoice.AUTHOR, state.preset)
+    }
+
+    private fun choose(choice: String, vararg steps: PendingStep) {
+        write(
+            GamePaths.PENDING,
+            ModelJson.write(
+                PendingActions().apply {
+                    firstRunChoice = choice
+                    this.steps = steps.toMutableList()
+                },
+            ),
+        )
+    }
+
+    @Test
+    fun `going without setup undoes the clean install and later updates add no pack files`() {
+        pack("3.4.0")
+        write("options.txt", "version:4790\nfov:1.0\n")
+        run()
+        // The first session: a mod writes its config on exit.
+        write("config/skyblocker.json", "written by Skyblocker on exit")
+
+        choose(FirstRunChoice.NONE)
+        run()
+        assertFalse(game.resolve("config/skyblocker.json").exists())
+        assertFalse(game.resolve("config/NoFrills/Configuration.json").exists())
+        assertEquals("version:4790\nfov:1.0\n", read("options.txt"))
+        assertEquals(FirstRunChoice.NONE, state().preset)
+        assertFalse(state().welcomePending)
+
+        pack("3.5.0", mapOf("config/new-mod.json" to "{}\n"))
+        assertEquals(LaunchMode.UPDATE, run().mode)
+        assertNull(read("config/new-mod.json"))
+        assertNull(read("config/skyblocker.json"))
+    }
+
+    @Test
+    fun `a custom setup lays the pack out again with only the chosen steps`() {
+        pack("3.4.0")
+        write("options.txt", "version:4790\nfov:1.0\n")
+        run()
+        write("config/skyblocker.json", "written by Skyblocker on exit")
+
+        choose(FirstRunChoice.CUSTOM, PendingStep.of("nofrills_command_keybinds", mapOf("equipment" to "key.keyboard.i")))
+        run()
+
+        assertTrue(read("config/skyblocker.json")!!.contains("\"enableWardrobeHelper\": false"), "the loadout step was left out")
+        val noFrills = JsonParser.parseString(read("config/NoFrills/Configuration.json")).asJsonObject
+        assertEquals(27, noFrills.getAsJsonObject("slotBinding").getAsJsonObject("data").getAsJsonObject("hotbar1").get("last").asInt, "slot bindings left as the pack has them")
+        val binds = noFrills.getAsJsonObject("customKeybinds").getAsJsonObject("data").getAsJsonArray("binds")
+            .associate { it.asJsonObject.get("command").asString to it.asJsonObject.get("key").asInt }
+        assertEquals(mapOf("/eq" to 73, "/wd" to 76, "/trades" to 45), binds)
+        // The synced options from before the install win again, the pack only fills the gaps.
+        assertEquals("version:4790\nfov:1.0\ntoggleAttack:false\nresourcePacks:[\"vanilla\"]\n", read("options.txt"))
+        assertEquals(FirstRunChoice.CUSTOM, state().preset)
+        assertFalse(state().welcomePending)
+    }
+
+    @Test
+    fun `keeping the author's preset just closes the welcome`() {
+        pack("3.4.0")
+        run()
+        val before = read("config/skyblocker.json")
+        me.kmsold.proupdater.core.Panel(game) { it in mods }.keepAuthorPreset()
+        assertFalse(state().welcomePending)
+        assertEquals(FirstRunChoice.AUTHOR, state().preset)
+        assertEquals(LaunchMode.UP_TO_DATE, run().mode)
+        assertEquals(before, read("config/skyblocker.json"))
     }
 
     @Test

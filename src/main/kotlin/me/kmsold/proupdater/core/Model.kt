@@ -37,15 +37,38 @@ class InstallState {
 
     /** One-time migrations that ran, or were skipped because the install was fresh. */
     var migrations: MutableList<String> = mutableListOf()
+
+    /** After a clean install, until the player picks how to set up: the welcome screen replaces the main menu. */
+    var welcomePending: Boolean = false
+
+    /** The backup taken by the clean install; restoring it undoes the install. */
+    var cleanInstallBackup: String? = null
+
+    /** The player's choice on the welcome screen, see [FirstRunChoice]. With `none` updates add no pack files. */
+    var preset: String? = null
+}
+
+/** What the player picked on the welcome screen after a clean install. */
+object FirstRunChoice {
+    /** The author's setup, already laid out by the clean install. */
+    const val AUTHOR = "author"
+
+    /** The pack files again, with only the steps the player picked, on the next start. */
+    const val CUSTOM = "custom"
+
+    /** The clean install undone on the next start: every mod keeps its own defaults. */
+    const val NONE = "none"
 }
 
 /** `proupdater/pending.json`: what the player asked for on the screen, done on the next launch. */
 class PendingActions {
+    /** [FirstRunChoice.CUSTOM] or [FirstRunChoice.NONE] from the welcome screen; handled before everything else. */
+    var firstRunChoice: String? = null
     var restoreBackup: String? = null
     var applyPackDefaults: Boolean = false
     var steps: MutableList<PendingStep> = mutableListOf()
 
-    fun isEmpty() = restoreBackup == null && !applyPackDefaults && steps.isEmpty()
+    fun isEmpty() = firstRunChoice == null && restoreBackup == null && !applyPackDefaults && steps.isEmpty()
 }
 
 class PendingStep {

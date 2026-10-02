@@ -21,9 +21,15 @@ import net.minecraft.network.chat.Component
  * The setup as a wizard: one page per step with its description, a switch and its keys, then a
  * summary that queues the chosen steps for the next start. Steps whose mods are missing get no
  * page, only a line in the summary.
+ *
+ * [onApply] replaces what the summary's button does; the welcome screen uses it to queue a custom
+ * first-run setup, where going without any step is a valid choice too.
  */
-class SetupWizardScreen(private val parent: Screen, private val panel: Panel) :
-    Screen(Component.translatable("proupdater.wizard.title")) {
+class SetupWizardScreen(
+    private val parent: Screen,
+    private val panel: Panel,
+    private val onApply: (() -> Unit)? = null,
+) : Screen(Component.translatable("proupdater.wizard.title")) {
 
     private val pages: List<SetupStep> = panel.steps.filter(panel::isAvailable)
 
@@ -157,13 +163,18 @@ class SetupWizardScreen(private val parent: Screen, private val panel: Panel) :
         addRenderableWidget(Button.builder(CommonComponents.GUI_BACK) { go(page - 1) }.bounds(left, y, half, 20).build())
         val anything = pages.any { panel.selected[it.id] == true }
         val apply = Button.builder(Component.translatable("proupdater.wizard.finish")) {
-            panel.queueSelectedSteps()
-            onClose()
+            val custom = onApply
+            if (custom != null) {
+                custom()
+            } else {
+                panel.queueSelectedSteps()
+                onClose()
+            }
         }.bounds(left + half + 4, y, half, 20).build()
-        apply.active = anything
+        apply.active = anything || onApply != null
         addRenderableWidget(apply)
         y += 24
-        if (!anything) {
+        if (!anything && onApply == null) {
             addRenderableWidget(
                 StringWidget(left, y, WIDTH, 9, Component.translatable("proupdater.wizard.nothing").withStyle(ChatFormatting.GRAY), font),
             )
