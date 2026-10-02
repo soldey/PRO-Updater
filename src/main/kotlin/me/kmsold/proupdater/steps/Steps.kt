@@ -9,6 +9,7 @@ object Steps {
         SkyblockerLoadoutStep(),
         NoFrillsCommandKeybindsStep(),
         NoFrillsSlotBindingsStep(),
+        NoFrillsViewmodelStep(),
         ResourcePacksStep(),
         AttackHoldStep(),
     )

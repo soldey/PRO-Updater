@@ -7,6 +7,7 @@ import me.kmsold.proupdater.core.JsonFile
 import me.kmsold.proupdater.core.KeyNames
 import me.kmsold.proupdater.steps.NoFrillsCommandKeybindsStep
 import me.kmsold.proupdater.steps.NoFrillsSlotBindingsStep
+import me.kmsold.proupdater.steps.NoFrillsViewmodelStep
 import me.kmsold.proupdater.steps.ResourcePacksStep
 import me.kmsold.proupdater.steps.SkyblockerLoadoutStep
 import me.kmsold.proupdater.steps.Steps
@@ -302,5 +303,82 @@ class StepsTest {
         val plain = JsonFile.parse("{\n  \"a\": \"x = y\"\n}\n")!!
         plain.setBoolean(listOf("b"), true)
         assertEquals("{\n  \"a\": \"x = y\",\n  \"b\": true\n}\n", plain.toText())
+    }
+
+    private val playerViewmodel = """
+        {
+          "slotBinding": {
+            "enabled": true
+          },
+          "viewmodel": {
+            "enabled": false,
+            "offsetX": 0.0,
+            "scaleX": 1.0,
+            "noHaste": false
+          }
+        }
+    """.trimIndent() + "\n"
+
+    private val packViewmodel = """
+        {
+          "viewmodel": {
+            "enabled": true,
+            "offsetX": 0.15,
+            "scaleX": 0.7,
+            "noHaste": true,
+            "speed": 10
+          }
+        }
+    """.trimIndent() + "\n"
+
+    private fun viewmodelFiles(withPackCopy: Boolean) = memory(
+        "config/NoFrills/Configuration.json" to playerViewmodel,
+        *(if (withPackCopy) arrayOf("proupdater/defaults/config/NoFrills/Configuration.json" to packViewmodel) else emptyArray()),
+    )
+
+    @Test
+    fun `viewmodel takes the pack values and turns the feature on`() {
+        val ctx = context(viewmodelFiles(withPackCopy = true), "nofrills")
+        NoFrillsViewmodelStep().apply(ctx, NoFrillsViewmodelStep().defaultOptions())
+        val result = json(ctx.text("config/NoFrills/Configuration.json"))
+        val viewmodel = result.getAsJsonObject("viewmodel")
+        assertTrue(viewmodel.get("enabled").asBoolean)
+        assertEquals(0.15, viewmodel.get("offsetX").asDouble)
+        assertEquals(0.7, viewmodel.get("scaleX").asDouble)
+        assertTrue(viewmodel.get("noHaste").asBoolean)
+        assertEquals(10, viewmodel.get("speed").asInt)
+        assertTrue(result.getAsJsonObject("slotBinding").get("enabled").asBoolean)
+    }
+
+    @Test
+    fun `viewmodel without the pack values only switches it on`() {
+        val ctx = context(viewmodelFiles(withPackCopy = true), "nofrills")
+        NoFrillsViewmodelStep().apply(ctx, mapOf(NoFrillsViewmodelStep.PACK_VALUES to "false"))
+        val viewmodel = json(ctx.text("config/NoFrills/Configuration.json")).getAsJsonObject("viewmodel")
+        assertTrue(viewmodel.get("enabled").asBoolean)
+        assertEquals(0.0, viewmodel.get("offsetX").asDouble)
+        assertEquals(1.0, viewmodel.get("scaleX").asDouble)
+        assertNull(viewmodel.get("speed"))
+    }
+
+    @Test
+    fun `viewmodel outside the pack only switches it on`() {
+        val ctx = context(viewmodelFiles(withPackCopy = false), "nofrills")
+        NoFrillsViewmodelStep().apply(ctx, NoFrillsViewmodelStep().defaultOptions())
+        val viewmodel = json(ctx.text("config/NoFrills/Configuration.json")).getAsJsonObject("viewmodel")
+        assertTrue(viewmodel.get("enabled").asBoolean)
+        assertEquals(1.0, viewmodel.get("scaleX").asDouble)
+        assertTrue(ctx.log.any { "only switching it on" in it })
+    }
+
+    @Test
+    fun `viewmodel that is already right is not rewritten`() {
+        val files = memory(
+            "config/NoFrills/Configuration.json" to packViewmodel,
+            "proupdater/defaults/config/NoFrills/Configuration.json" to packViewmodel,
+        )
+        val ctx = context(files, "nofrills")
+        NoFrillsViewmodelStep().apply(ctx, NoFrillsViewmodelStep().defaultOptions())
+        assertTrue(ctx.files.changed().isEmpty())
     }
 }

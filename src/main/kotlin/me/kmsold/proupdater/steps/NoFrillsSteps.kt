@@ -3,6 +3,8 @@ package me.kmsold.proupdater.steps
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import me.kmsold.proupdater.core.EditResult
+import me.kmsold.proupdater.core.GamePaths
+import me.kmsold.proupdater.core.JsonFile
 import me.kmsold.proupdater.core.KeyNames
 import me.kmsold.proupdater.core.editJson
 
@@ -137,5 +139,48 @@ class NoFrillsSlotBindingsStep : SetupStep {
             }
         }
         context.reportEdit(result, "clearing the slot bindings was")
+    }
+}
+
+/**
+ * Turns on NoFrills Viewmodel (`viewmodel` in `config/NoFrills/Configuration.json`): where the held
+ * item sits, how big it is and how it swings.
+ *
+ * With [PACK_VALUES] on, the values come from the pack's own copy of that file in `defaults/`, so
+ * they follow whatever the pack ships. With it off, or when the pack copy is missing (the mod runs
+ * outside the pack), only the switch is flipped and the player's own values stay.
+ */
+class NoFrillsViewmodelStep : SetupStep {
+
+    override val id = "nofrills_viewmodel"
+    override val version = 1
+    override val requiredMods = listOf(NOFRILLS)
+    override val files = listOf(CONFIG)
+    override val options = listOf(StepOption(PACK_VALUES, OptionKind.TOGGLE, "true"))
+
+    override fun apply(context: StepContext, options: Map<String, String>) {
+        val packValues = if (resolve(options).getValue(PACK_VALUES) == "true") packViewmodel(context) else null
+        val result = context.files.editJson(CONFIG) { json ->
+            val viewmodel = json.objectAt("viewmodel", create = true) ?: return@editJson
+            packValues?.entrySet()?.forEach { (key, value) ->
+                if (viewmodel.get(key) != value) {
+                    viewmodel.add(key, value.deepCopy())
+                    json.markChanged()
+                }
+            }
+            json.setBoolean(listOf("viewmodel", "enabled"), true)
+        }
+        context.reportEdit(result, "turning on the viewmodel was")
+    }
+
+    private fun packViewmodel(context: StepContext): JsonObject? {
+        val copy = context.files.readText(GamePaths.defaultsPath(CONFIG))?.let(JsonFile::parse)
+        val values = (copy?.root as? JsonObject)?.get("viewmodel") as? JsonObject
+        if (values == null) context.log("No viewmodel in the pack copy of $CONFIG, only switching it on")
+        return values
+    }
+
+    companion object {
+        const val PACK_VALUES = "pack_values"
     }
 }

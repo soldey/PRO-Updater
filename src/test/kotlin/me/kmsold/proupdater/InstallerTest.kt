@@ -114,7 +114,7 @@ class InstallerTest {
         assertEquals("3.4.0", state.packVersion)
         assertNotNull(state.cleanInstallAt)
         assertEquals(3, state.files.size)
-        assertEquals(setOf("skyblocker_loadout", "nofrills_command_keybinds", "nofrills_clear_slot_bindings", "resource_packs", "attack_hold"), state.steps.keys)
+        assertEquals(setOf("skyblocker_loadout", "nofrills_command_keybinds", "nofrills_clear_slot_bindings", "nofrills_viewmodel", "resource_packs", "attack_hold"), state.steps.keys)
         assertEquals(listOf("vanilla", "file/FurSky Reborn.cats.zip"), state.resourcePacks)
         assertTrue(state.welcomePending)
         assertEquals(report.backup, state.cleanInstallBackup)
