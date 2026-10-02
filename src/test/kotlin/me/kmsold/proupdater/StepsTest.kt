@@ -254,6 +254,46 @@ class StepsTest {
     }
 
     @Test
+    fun `the loadout step binds the key that opens Loadouts through NoFrills`() {
+        val ctx = context(loadoutFiles(), "skyblocker", "nofrills")
+        val step = SkyblockerLoadoutStep()
+        step.apply(ctx, step.defaultOptions())
+        val binds = binds(ctx.text("config/NoFrills/Configuration.json")).associateBy { it.get("command").asString }
+        assertEquals(96, binds.getValue("/ld").get("key").asInt)
+        assertEquals("loadout", binds.getValue("/ld").get("name").asString)
+        assertFalse(binds.getValue("/ld").get("allowInGui").asBoolean)
+        assertTrue(json(ctx.text("config/NoFrills/Configuration.json")).getAsJsonObject("customKeybinds").get("enabled").asBoolean)
+
+        // The author's own bind is matched by command, whatever it is called.
+        step.apply(ctx, step.defaultOptions() + ("open_loadouts" to "key.keyboard.o"))
+        val again = binds(ctx.text("config/NoFrills/Configuration.json")).filter { it.get("command").asString == "/ld" }
+        assertEquals(listOf(79), again.map { it.get("key").asInt })
+    }
+
+    @Test
+    fun `without NoFrills the Loadouts key is skipped quietly`() {
+        val ctx = context(memory("config/skyblocker.json" to skyblocker), "skyblocker")
+        SkyblockerLoadoutStep().apply(ctx, emptyMap())
+        assertTrue(ctx.notices.isEmpty())
+        assertNull(ctx.text("config/NoFrills/Configuration.json"))
+    }
+
+    @Test
+    fun `every step only changes the files it declares`() {
+        for (step in Steps.all) {
+            val ctx = context(
+                loadoutFiles().also {
+                    it.files["proupdater/defaults/resourcepacks.json"] = "[\"vanilla\"]".toByteArray()
+                },
+                "skyblocker", "nofrills", "iqaddons", "skyhanni", "odin", "firmament",
+            )
+            step.apply(ctx, step.defaultOptions())
+            val undeclared = ctx.files.changed().keys - step.files.toSet()
+            assertTrue(undeclared.isEmpty(), "${step.id} changed $undeclared")
+        }
+    }
+
+    @Test
     fun `json escaping follows the original file`() {
         val escaped = JsonFile.parse("{\n  \"a\": \"x \\u003d y\"\n}")!!
         escaped.setBoolean(listOf("b"), true)

@@ -37,5 +37,13 @@
     },
     "recommends": {
         "modmenu": "*"
+    },
+    "custom": {
+        "modmenu": {
+            "links": {
+                "modmenu.modrinth": "https://modrinth.com/mod/pro-updater",
+                "modmenu.github_releases": "https://github.com/soldey/PRO-Updater/releases"
+            }
+        }
     }
 }

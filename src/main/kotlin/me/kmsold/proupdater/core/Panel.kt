@@ -8,9 +8,9 @@ import kotlin.io.path.exists
 import kotlin.io.path.readText
 
 /**
- * What the settings screen shows and queues, without any Minecraft classes. Nothing here touches
- * the settings files: every action goes into `pending.json` for the next launch, because the mods
- * hold their configs in memory and would write them back on exit.
+ * What the screens show and queue, without any Minecraft classes. Nothing here writes the settings
+ * files: every action goes into `pending.json` for the next launch, because the mods hold their
+ * configs in memory and would write them back on exit. Only a manual backup happens at once.
  */
 class Panel(private val gameDir: Path, private val isModLoaded: (String) -> Boolean) {
 
@@ -42,6 +42,16 @@ class Panel(private val gameDir: Path, private val isModLoaded: (String) -> Bool
     fun isNew(step: SetupStep) = Steps.isNew(step, state, packList)
 
     fun backups(): List<String> = Backups.list(gameDir.resolve(GamePaths.BACKUPS))
+
+    /**
+     * Saves the settings files right away; reading them while the game runs is harmless. Changes a
+     * mod still holds in memory are not in it. Returns the backup name, null when there was
+     * nothing to save; throws when writing failed.
+     */
+    fun makeBackup(): String? = Backups.makeManual(gameDir, manifest, state, Backups.now())
+
+    /** Whether the setup screen has something new for this player. */
+    fun hasNewSteps() = steps.any { isAvailable(it) && isNew(it) }
 
     /** Replaces the queued steps with the ticked, available ones. */
     fun queueSelectedSteps() {

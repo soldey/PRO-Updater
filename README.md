@@ -36,7 +36,7 @@ Before any run that overwrites or deletes a file, the old files are zipped into
 
 | Step | What it does |
 | --- | --- |
-| Loadout keys: Skyblocker | Turns on Skyblocker's loadout helper and binds loadouts 1-12 to `1`-`9`, `0`, `-`, `=` inside the Loadouts window. The same keys in IQ Addons, SkyHanni, Odin, NoFrills and Firmament are turned off so only one mod reacts. |
+| Loadout keys: Skyblocker | Turns on Skyblocker's loadout helper and binds loadouts 1-12 to `1`-`9`, `0`, `-`, `=` inside the Loadouts window, plus `` ` `` to open Loadouts (`/ld`, a NoFrills command key). The same keys in IQ Addons, SkyHanni, Odin, NoFrills and Firmament are turned off so only one mod reacts. |
 | Command keys | NoFrills custom keybinds: `U` - `/eq`, `L` - `/wd`, `-` - `/trades`, outside of menus only. Your other binds stay. |
 | Clear NoFrills slot bindings | Empties the slot bindings (the feature and its key stay). Fresh install and button only, **never** after an update. |
 | Resource packs | Turns on the pack's resource packs in order, without a resource reload. Packs you turned on yourself stay on, above them. |
@@ -44,9 +44,16 @@ Before any run that overwrites or deletes a file, the old files are zipped into
 
 ## The screen
 
-Open it from Mod Menu or with `/proupdater`. Tick steps and set their keys, apply the pack
-settings in full ("as the pack author has it", after a backup), or restore a backup. All of it
-is **queued** and happens on the next game start.
+Open it from Mod Menu or with `/proupdater`. It shows which pack settings are installed and has:
+
+* **Setup...** - the steps above: tick them, set their keys, apply the ticked ones.
+* **Apply pack settings** - every settings file replaced with the pack's and the default steps,
+  i.e. the setup as the pack author has it. The replaced files are backed up first.
+* **Make a backup** - saves `options.txt`, the pack's configs and every file a step changes,
+  right away. Not all of `config/`: most of it is caches.
+* **Restore a backup...** - one of the newest backups, yours or automatic.
+
+Everything except making a backup is **queued** and happens on the next game start.
 
 ## Files
 

@@ -1,5 +1,6 @@
 package me.kmsold.proupdater.core
 
+import me.kmsold.proupdater.steps.Steps
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
@@ -83,6 +84,23 @@ object Backups {
         for (path in contents.info.created) {
             if (GamePaths.isSafe(path) && path !in contents.files) files.delete(path)
         }
+    }
+
+    /** What "Make a backup" saves: every file PRO-Updater may change. Never all of `config/`, which is mostly caches. */
+    fun managedPaths(manifest: Manifest?, state: InstallState?): List<String> =
+        (listOf(GamePaths.OPTIONS) + manifest?.payload()?.keys.orEmpty() + state?.files?.keys.orEmpty() + Steps.all.flatMap { it.files })
+            .filter(GamePaths::isSafe)
+            .distinct()
+            .sorted()
+
+    /** Zips the [managedPaths] that exist now. Returns the backup name, or null when there was nothing to save. */
+    fun makeManual(gameDir: Path, manifest: Manifest?, state: InstallState?, now: ZonedDateTime): String? {
+        val disk = DirectorySource(gameDir)
+        val files = managedPaths(manifest, state).mapNotNull { path -> disk.read(path)?.let { path to it } }.toMap()
+        if (files.isEmpty()) return null
+        val name = fileName(now, "manual")
+        write(gameDir.resolve(GamePaths.BACKUPS), name, zip(files, emptyList(), "manual", now.toOffsetDateTime().toString()))
+        return name
     }
 
     fun fileName(now: ZonedDateTime, reason: String): String =

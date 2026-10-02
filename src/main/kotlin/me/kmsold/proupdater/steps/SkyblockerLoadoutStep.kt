@@ -3,6 +3,7 @@ package me.kmsold.proupdater.steps
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import me.kmsold.proupdater.core.EditResult
+import me.kmsold.proupdater.core.GamePaths
 import me.kmsold.proupdater.core.KeyNames
 import me.kmsold.proupdater.core.editJson
 import me.kmsold.proupdater.core.editOptions
@@ -15,6 +16,9 @@ import me.kmsold.proupdater.core.editOptions
  * on (and the hotbar keys in "Armor Sets" / "Equipment Sets"), the keys are
  * `key_key.skyblocker.loadout.01` to `.12` in `options.txt`.
  *
+ * The key that opens the "Loadouts" window is a NoFrills command bind for `/ld`, like the pack
+ * author's, so it works the same whichever mod switches the loadouts.
+ *
  * Built so another provider can be picked later: the loadout mods are listed in [Provider], one is
  * switched on and the rest off. Only Skyblocker can be picked so far.
  */
@@ -23,9 +27,11 @@ class SkyblockerLoadoutStep : SetupStep {
     override val id = "skyblocker_loadout"
     override val version = 1
     override val requiredMods = listOf(SKYBLOCKER)
+    override val files = listOf(GamePaths.OPTIONS, SKYBLOCKER_CONFIG, SKYHANNI_CONFIG, ODIN_CONFIG, NOFRILLS_CONFIG)
 
     override val options: List<StepOption> =
-        SLOT_DEFAULTS.mapIndexed { i, key -> StepOption(slotOption(i + 1), OptionKind.KEY, "key.keyboard.$key") } +
+        listOf(StepOption(OPEN_LOADOUTS.option, OptionKind.KEY, OPEN_LOADOUTS.defaultKey, glfwOnly = true)) +
+            SLOT_DEFAULTS.mapIndexed { i, key -> StepOption(slotOption(i + 1), OptionKind.KEY, "key.keyboard.$key") } +
             StepOption(UNBIND_IQ_WARDROBE, OptionKind.TOGGLE, "true")
 
     enum class Provider { SKYBLOCKER, IQ, SKYHANNI, ODIN, NOFRILLS, FIRMAMENT }
@@ -34,6 +40,15 @@ class SkyblockerLoadoutStep : SetupStep {
         val values = resolve(options)
         enable(Provider.SKYBLOCKER, context, values)
         Provider.entries.filter { it != Provider.SKYBLOCKER }.forEach { disable(it, context, values) }
+        bindOpenKey(context, values.getValue(OPEN_LOADOUTS.option))
+    }
+
+    private fun bindOpenKey(context: StepContext, key: String) {
+        if (!context.isModLoaded(NOFRILLS) && !context.files.exists(NOFRILLS_CONFIG)) {
+            context.log("NoFrills is not installed, the key that opens Loadouts was not bound")
+            return
+        }
+        NoFrillsKeybinds.bind(context, listOf(OPEN_LOADOUTS to key), "the key that opens Loadouts was")
     }
 
     private fun enable(provider: Provider, context: StepContext, values: Map<String, String>) {
@@ -88,11 +103,17 @@ class SkyblockerLoadoutStep : SetupStep {
         const val UNBIND_IQ_WARDROBE = "unbind_iq_wardrobe"
         const val SKYBLOCKER = "skyblocker"
         const val IQ = "iqaddons"
+        const val NOFRILLS = "nofrills"
         const val SKYBLOCKER_CONFIG = "config/skyblocker.json"
         const val SKYHANNI_CONFIG = "config/skyhanni/config.json"
         const val ODIN_CONFIG = "config/odin/odin-config.json"
         const val ODIN_MODULE = "Loadout Keybinds"
-        const val NOFRILLS_CONFIG = "config/NoFrills/Configuration.json"
+        const val NOFRILLS_CONFIG = NoFrillsKeybinds.CONFIG
+
+        /** Opens the "Loadouts" window, like the pack author's bind on the key left of 1. */
+        val OPEN_LOADOUTS = NoFrillsKeybinds.Command(
+            "open_loadouts", "loadout", "/ld", setOf("/ld", "/loadout", "/loadouts"), "key.keyboard.grave.accent",
+        )
 
         /** 01-09 on 1-9, 10 on 0, 11 on minus, 12 on equals, like the number row. */
         private val SLOT_DEFAULTS = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "minus", "equal")

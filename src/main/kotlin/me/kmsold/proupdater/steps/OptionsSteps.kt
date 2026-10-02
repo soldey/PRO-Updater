@@ -18,6 +18,7 @@ class ResourcePacksStep : SetupStep {
     override val id = "resource_packs"
     override val version = 1
     override val requiredMods = emptyList<String>()
+    override val files = listOf(GamePaths.OPTIONS)
 
     override fun apply(context: StepContext, options: Map<String, String>) {
         val wanted = packList(context) ?: return
@@ -62,6 +63,7 @@ class AttackHoldStep : SetupStep {
     override val id = "attack_hold"
     override val version = 1
     override val requiredMods = emptyList<String>()
+    override val files = listOf(GamePaths.OPTIONS)
 
     override fun apply(context: StepContext, options: Map<String, String>) {
         val result = context.files.editOptions { it["toggleAttack"] = "false" }

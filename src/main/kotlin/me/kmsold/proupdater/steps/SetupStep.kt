@@ -50,6 +50,9 @@ interface SetupStep {
 
     val options: List<StepOption> get() = emptyList()
 
+    /** Every file [apply] may change, game-relative. A manual backup saves these. */
+    val files: List<String>
+
     /** Part of a clean install and of "Apply pack settings". */
     val enabledByDefault: Boolean get() = true
 

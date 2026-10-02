@@ -1,11 +1,11 @@
 package me.kmsold.proupdater.screen
 
+import me.kmsold.proupdater.ProUpdater
 import me.kmsold.proupdater.compat.McCompat
 import me.kmsold.proupdater.core.Panel
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.ChatFormatting
 import net.minecraft.client.gui.components.Button
-import net.minecraft.client.gui.components.CycleButton
 import net.minecraft.client.gui.components.StringWidget
 import net.minecraft.client.gui.components.Tooltip
 import net.minecraft.client.gui.screens.Screen
@@ -13,18 +13,22 @@ import net.minecraft.network.chat.CommonComponents
 import net.minecraft.network.chat.Component
 
 /**
- * Opened from Mod Menu and with `/proupdater`. Every button only queues work in `pending.json`;
- * the settings change on the next game start.
+ * The mod's main screen, opened from Mod Menu and with `/proupdater`: the pack status, the
+ * setup steps behind their own button, and backups. Everything except a manual backup is queued
+ * in `pending.json` and happens on the next game start.
  */
 class ProUpdaterScreen(
     private val parent: Screen?,
     private val panel: Panel = Panel(FabricLoader.getInstance().gameDir, FabricLoader.getInstance()::isModLoaded),
 ) : Screen(Component.translatable("proupdater.screen.title")) {
 
+    /** The outcome of the last manual backup, kept across widget rebuilds. */
+    private var message: Component? = null
+
     override fun init() {
         val left = width / 2 - WIDTH / 2
-        val rows = panel.steps.size + 3
-        var y = maxOf(6, (height - (52 + rows * ROW + 24)) / 2)
+        val half = (WIDTH - 4) / 2
+        var y = maxOf(6, (height - (42 + 4 * ROW + 26)) / 2)
 
         addRenderableWidget(StringWidget(left, y, WIDTH, 9, title, font))
         y += 14
@@ -34,56 +38,34 @@ class ProUpdaterScreen(
         }
         y += 6
 
-        for (step in panel.steps) {
-            val available = panel.isAvailable(step)
-            var label: Component = Component.translatable("proupdater.step.${step.id}")
-            if (available && panel.isNew(step)) {
-                label = label.copy().append(Component.translatable("proupdater.screen.new").withStyle(ChatFormatting.YELLOW))
-            }
-            val toggleWidth = if (step.options.isEmpty()) WIDTH else WIDTH - OPTIONS_WIDTH - 4
-            val toggle = CycleButton.onOffBuilder(panel.selected[step.id] == true && available)
-                .create(left, y, toggleWidth, 20, label) { _, value -> panel.selected[step.id] = value }
-            toggle.active = available
-            toggle.setTooltip(
-                Tooltip.create(
-                    if (available) {
-                        Component.translatable("proupdater.step.${step.id}.description")
-                    } else {
-                        Component.translatable("proupdater.screen.needsMods", step.requiredMods.joinToString())
-                    },
-                ),
-            )
-            addRenderableWidget(toggle)
-            if (step.options.isNotEmpty()) {
-                val button = Button.builder(Component.translatable("proupdater.screen.options")) {
-                    McCompat.setScreen(StepOptionsScreen(this, step, panel.options.getValue(step.id)))
-                }.bounds(left + toggleWidth + 4, y, OPTIONS_WIDTH, 20).build()
-                button.active = available
-                addRenderableWidget(button)
-            }
-            y += ROW
+        var setupLabel: Component = Component.translatable("proupdater.screen.setup")
+        if (panel.hasNewSteps()) {
+            setupLabel = setupLabel.copy().append(Component.translatable("proupdater.screen.new").withStyle(ChatFormatting.YELLOW))
         }
-        y += 4
-
         addRenderableWidget(
-            Button.builder(Component.translatable("proupdater.screen.queueSteps")) {
-                panel.queueSelectedSteps()
-                rebuildWidgets()
-            }.bounds(left, y, WIDTH, 20)
-                .tooltip(Tooltip.create(Component.translatable("proupdater.screen.queueSteps.tooltip")))
+            Button.builder(setupLabel) { McCompat.setScreen(SetupScreen(this, panel)) }
+                .bounds(left, y, WIDTH, 20)
+                .tooltip(Tooltip.create(Component.translatable("proupdater.screen.setup.tooltip")))
                 .build(),
         )
         y += ROW
 
-        val half = (WIDTH - 4) / 2
         val applyPack = Button.builder(Component.translatable("proupdater.screen.applyPack")) {
             panel.queueApplyPackDefaults()
             rebuildWidgets()
-        }.bounds(left, y, half, 20)
+        }.bounds(left, y, WIDTH, 20)
             .tooltip(Tooltip.create(Component.translatable("proupdater.screen.applyPack.tooltip")))
             .build()
         applyPack.active = panel.manifest != null
         addRenderableWidget(applyPack)
+        y += ROW
+
+        addRenderableWidget(
+            Button.builder(Component.translatable("proupdater.screen.makeBackup")) { makeBackup() }
+                .bounds(left, y, half, 20)
+                .tooltip(Tooltip.create(Component.translatable("proupdater.screen.makeBackup.tooltip")))
+                .build(),
+        )
         addRenderableWidget(
             Button.builder(Component.translatable("proupdater.screen.restore")) {
                 McCompat.setScreen(BackupsScreen(this, panel))
@@ -100,7 +82,27 @@ class ProUpdaterScreen(
         addRenderableWidget(Button.builder(CommonComponents.GUI_DONE) { onClose() }.bounds(left + half + 4, y, half, 20).build())
         y += ROW + 2
 
-        addRenderableWidget(StringWidget(left, y, WIDTH, 9, queueLine(), font))
+        addRenderableWidget(StringWidget(left, y, WIDTH, 9, queueLine(panel), font))
+        message?.let { addRenderableWidget(StringWidget(left, y + 12, WIDTH, 9, it, font)) }
+    }
+
+    private fun makeBackup() {
+        message = runCatching { panel.makeBackup() }
+            .fold(
+                onSuccess = { name ->
+                    if (name == null) {
+                        Component.translatable("proupdater.screen.makeBackup.nothing").withStyle(ChatFormatting.GRAY)
+                    } else {
+                        Component.translatable("proupdater.screen.makeBackup.done", name.removeSuffix(".zip"))
+                            .withStyle(ChatFormatting.GREEN)
+                    }
+                },
+                onFailure = {
+                    ProUpdater.logger.error("Could not make a backup", it)
+                    Component.translatable("proupdater.screen.makeBackup.failed").withStyle(ChatFormatting.RED)
+                },
+            )
+        rebuildWidgets()
     }
 
     private fun statusLines(): List<Component> {
@@ -114,27 +116,27 @@ class ProUpdaterScreen(
         )
     }
 
-    private fun queueLine(): Component {
-        val pending = panel.pending
-        if (pending.isEmpty()) return Component.translatable("proupdater.screen.queue.empty").withStyle(ChatFormatting.GRAY)
-        val parts = buildList {
-            pending.restoreBackup?.let { add(Component.translatable("proupdater.screen.queue.restore", it)) }
-            if (pending.applyPackDefaults) add(Component.translatable("proupdater.screen.queue.applyPack"))
-            if (pending.steps.isNotEmpty()) add(Component.translatable("proupdater.screen.queue.steps", pending.steps.size.toString()))
-        }
-        val joined = Component.empty()
-        parts.forEachIndexed { i, part ->
-            if (i > 0) joined.append(", ")
-            joined.append(part)
-        }
-        return Component.translatable("proupdater.screen.queue", joined).withStyle(ChatFormatting.YELLOW)
-    }
-
     override fun onClose() = McCompat.setScreen(parent)
 
-    private companion object {
-        const val WIDTH = 310
-        const val OPTIONS_WIDTH = 76
-        const val ROW = 24
+    companion object {
+        private const val WIDTH = 310
+        private const val ROW = 24
+
+        /** What is waiting for the next start, shared with the setup screen. */
+        fun queueLine(panel: Panel): Component {
+            val pending = panel.pending
+            if (pending.isEmpty()) return Component.translatable("proupdater.screen.queue.empty").withStyle(ChatFormatting.GRAY)
+            val parts = buildList {
+                pending.restoreBackup?.let { add(Component.translatable("proupdater.screen.queue.restore", it.removeSuffix(".zip"))) }
+                if (pending.applyPackDefaults) add(Component.translatable("proupdater.screen.queue.applyPack"))
+                if (pending.steps.isNotEmpty()) add(Component.translatable("proupdater.screen.queue.steps", pending.steps.size.toString()))
+            }
+            val joined = Component.empty()
+            parts.forEachIndexed { i, part ->
+                if (i > 0) joined.append(", ")
+                joined.append(part)
+            }
+            return Component.translatable("proupdater.screen.queue", joined).withStyle(ChatFormatting.YELLOW)
+        }
     }
 }

@@ -7,7 +7,7 @@ import me.kmsold.proupdater.core.KeyNames
 import me.kmsold.proupdater.core.editJson
 
 private const val NOFRILLS = "nofrills"
-private const val CONFIG = "config/NoFrills/Configuration.json"
+private const val CONFIG = NoFrillsKeybinds.CONFIG
 
 private fun StepContext.reportEdit(result: EditResult, what: String) {
     if (result == EditResult.MISSING || result == EditResult.UNREADABLE) {
@@ -17,26 +17,22 @@ private fun StepContext.reportEdit(result: EditResult, what: String) {
 }
 
 /**
- * `/eq`, `/wd` and `/trades` on keys through NoFrills custom keybinds
- * (`customKeybinds.data.binds` in `config/NoFrills/Configuration.json`, keys as GLFW codes).
+ * NoFrills custom keybinds that run a command (`customKeybinds.data.binds` in
+ * `config/NoFrills/Configuration.json`, keys as GLFW codes). Shared by every step that binds a command.
  *
  * Binds are matched by command, so the player's own binds stay and nothing is added twice.
- * `allowInGui` stays false: minus is also Skyblocker's loadout slot 11, which only works inside
- * the "Loadouts" window, so the two never meet.
+ * `allowInGui` is always false: the command keys never fire inside a menu, where the same keys
+ * may switch loadouts.
  */
-class NoFrillsCommandKeybindsStep : SetupStep {
+object NoFrillsKeybinds {
 
-    override val id = "nofrills_command_keybinds"
-    override val version = 1
-    override val requiredMods = listOf(NOFRILLS)
+    const val CONFIG = "config/NoFrills/Configuration.json"
 
     /** The command written for a new bind, the commands that count as the same bind, the default key. */
     data class Command(val option: String, val name: String, val command: String, val aliases: Set<String>, val defaultKey: String)
 
-    override val options = COMMANDS.map { StepOption(it.option, OptionKind.KEY, it.defaultKey, glfwOnly = true) }
-
-    override fun apply(context: StepContext, options: Map<String, String>) {
-        val values = resolve(options)
+    /** Binds each command to its Minecraft key name; an unbound key switches the bind off. */
+    fun bind(context: StepContext, keys: List<Pair<Command, String>>, what: String) {
         val result = context.files.editJson(CONFIG) { json ->
             if (!json.setBoolean(listOf("customKeybinds", "enabled"), true)) return@editJson
             val data = json.objectAt("customKeybinds", "data", create = true) ?: return@editJson
@@ -44,11 +40,11 @@ class NoFrillsCommandKeybindsStep : SetupStep {
                 data.add("binds", it)
                 json.markChanged()
             }
-            for (command in COMMANDS) {
-                if (upsert(binds, command, values.getValue(command.option))) json.markChanged()
+            for ((command, key) in keys) {
+                if (upsert(binds, command, key)) json.markChanged()
             }
         }
-        context.reportEdit(result, "the command keybinds were")
+        context.reportEdit(result, what)
     }
 
     /** Returns true when [binds] changed. */
@@ -81,12 +77,31 @@ class NoFrillsCommandKeybindsStep : SetupStep {
         bind.addProperty("allowInGui", false)
         return bind != before
     }
+}
+
+/**
+ * `/eq`, `/wd` and `/trades` on keys through NoFrills custom keybinds. Minus is also Skyblocker's
+ * loadout slot 11, which only works inside the "Loadouts" window, so the two never meet.
+ */
+class NoFrillsCommandKeybindsStep : SetupStep {
+
+    override val id = "nofrills_command_keybinds"
+    override val version = 1
+    override val requiredMods = listOf(NOFRILLS)
+    override val files = listOf(CONFIG)
+
+    override val options = COMMANDS.map { StepOption(it.option, OptionKind.KEY, it.defaultKey, glfwOnly = true) }
+
+    override fun apply(context: StepContext, options: Map<String, String>) {
+        val values = resolve(options)
+        NoFrillsKeybinds.bind(context, COMMANDS.map { it to values.getValue(it.option) }, "the command keybinds were")
+    }
 
     companion object {
         val COMMANDS = listOf(
-            Command("equipment", "equipment", "/eq", setOf("/eq", "/equipment"), "key.keyboard.u"),
-            Command("wardrobe", "wardrobe", "/wd", setOf("/wd", "/wardrobe"), "key.keyboard.l"),
-            Command("trades", "trades", "/trades", setOf("/trades"), "key.keyboard.minus"),
+            NoFrillsKeybinds.Command("equipment", "equipment", "/eq", setOf("/eq", "/equipment"), "key.keyboard.u"),
+            NoFrillsKeybinds.Command("wardrobe", "wardrobe", "/wd", setOf("/wd", "/wardrobe"), "key.keyboard.l"),
+            NoFrillsKeybinds.Command("trades", "trades", "/trades", setOf("/trades"), "key.keyboard.minus"),
         )
     }
 }
@@ -103,6 +118,7 @@ class NoFrillsSlotBindingsStep : SetupStep {
     override val id = "nofrills_clear_slot_bindings"
     override val version = 1
     override val requiredMods = listOf(NOFRILLS)
+    override val files = listOf(CONFIG)
     override val offeredOnUpdate = false
 
     override fun apply(context: StepContext, options: Map<String, String>) {

@@ -100,7 +100,9 @@ class InstallerTest {
         assertTrue(read("config/skyblocker.json")!!.contains("\"enableWardrobeHelper\": true"))
         val noFrills = JsonParser.parseString(read("config/NoFrills/Configuration.json")).asJsonObject
         assertEquals(0, noFrills.getAsJsonObject("slotBinding").getAsJsonObject("data").getAsJsonObject("hotbar1").get("last").asInt)
-        assertEquals(3, noFrills.getAsJsonObject("customKeybinds").getAsJsonObject("data").getAsJsonArray("binds").size())
+        val binds = noFrills.getAsJsonObject("customKeybinds").getAsJsonObject("data").getAsJsonArray("binds")
+            .associate { it.asJsonObject.get("command").asString to it.asJsonObject.get("key").asInt }
+        assertEquals(mapOf("/eq" to 85, "/wd" to 76, "/trades" to 45, "/ld" to 96), binds)
 
         val state = state()
         assertEquals("3.4.0", state.packVersion)
@@ -216,6 +218,32 @@ class InstallerTest {
         assertEquals(LaunchMode.NO_MANIFEST, report.mode)
         assertEquals("version:4790\n", read("options.txt"))
         assertNull(read(GamePaths.STATE))
+    }
+
+    @Test
+    fun `a manual backup saves the managed files and restores them`() {
+        pack("3.4.0")
+        run()
+        write("config/unrelated/cache.json", "big cache")
+        write("options.txt", "version:4790\nfov:1.0\n")
+        val name = Backups.makeManual(game, ModelJson.manifest(read(GamePaths.MANIFEST)!!), state(), clock)
+        assertEquals("2026-10-02_12-01-00_manual.zip", name)
+
+        val contents = Backups.unzip(game.resolve(GamePaths.BACKUPS).resolve(name!!).toFile().readBytes())!!
+        assertEquals(setOf("options.txt", "config/skyblocker.json", "config/NoFrills/Configuration.json"), contents.files.keys)
+        assertEquals(emptyList<String>(), contents.info.created)
+
+        write("options.txt", "version:4790\nfov:0.1\n")
+        write(GamePaths.PENDING, ModelJson.write(PendingActions().apply { restoreBackup = name }))
+        run()
+        assertEquals("version:4790\nfov:1.0\n", read("options.txt"))
+        assertEquals("big cache", read("config/unrelated/cache.json"))
+    }
+
+    @Test
+    fun `a manual backup of an empty folder is nothing`() {
+        assertNull(Backups.makeManual(game, null, null, clock))
+        assertFalse(game.resolve(GamePaths.BACKUPS).exists())
     }
 
     @Test
