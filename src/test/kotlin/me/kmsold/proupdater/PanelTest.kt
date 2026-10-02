@@ -31,7 +31,7 @@ class PanelTest {
     @Test
     fun `steps never applied here start switched on, except clearing slot bindings`() {
         assertEquals(
-            setOf("skyblocker_loadout", "nofrills_command_keybinds", "nofrills_viewmodel", "resource_packs", "attack_hold"),
+            setOf("skyblocker_loadout", "nofrills_command_keybinds", "nofrills_viewmodel", "resource_packs"),
             on(Panel(game, allMods)),
         )
     }
@@ -40,7 +40,7 @@ class PanelTest {
     fun `steps already applied start switched off`() {
         val state = InstallState().apply {
             packVersion = "3.4.0"
-            listOf("skyblocker_loadout", "nofrills_command_keybinds", "nofrills_clear_slot_bindings", "nofrills_viewmodel", "resource_packs", "attack_hold")
+            listOf("skyblocker_loadout", "nofrills_command_keybinds", "nofrills_clear_slot_bindings", "nofrills_viewmodel", "resource_packs")
                 .forEach { steps[it] = 1 }
         }
         write(GamePaths.STATE, ModelJson.write(state))

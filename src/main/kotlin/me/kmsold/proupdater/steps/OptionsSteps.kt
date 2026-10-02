@@ -56,17 +56,3 @@ class ResourcePacksStep : SetupStep {
         }
     }
 }
-
-/** Attack/Destroy on hold instead of toggle (`toggleAttack:false`), without touching anything else. */
-class AttackHoldStep : SetupStep {
-
-    override val id = "attack_hold"
-    override val version = 1
-    override val requiredMods = emptyList<String>()
-    override val files = listOf(GamePaths.OPTIONS)
-
-    override fun apply(context: StepContext, options: Map<String, String>) {
-        val result = context.files.editOptions { it["toggleAttack"] = "false" }
-        if (result == EditResult.MISSING) context.log("No options.txt, Attack/Destroy was not set to hold")
-    }
-}

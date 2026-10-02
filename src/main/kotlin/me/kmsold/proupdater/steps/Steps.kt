@@ -11,7 +11,6 @@ object Steps {
         NoFrillsSlotBindingsStep(),
         NoFrillsViewmodelStep(),
         ResourcePacksStep(),
-        AttackHoldStep(),
     )
 
     fun byId(id: String): SetupStep? = all.firstOrNull { it.id == id }

@@ -2,7 +2,6 @@ package me.kmsold.proupdater
 
 import me.kmsold.proupdater.core.KeyNames
 import me.kmsold.proupdater.core.OptionsFile
-import me.kmsold.proupdater.steps.AttackHoldStep
 import me.kmsold.proupdater.steps.ResourcePacksStep
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -97,12 +96,5 @@ class OptionsFileTest {
         )
         ResourcePacksStep().apply(ctx, emptyMap())
         assertEquals("resourcePacks:[\"vanilla\",\"file/Folder\"]\n", ctx.text("options.txt"))
-    }
-
-    @Test
-    fun `attack hold only touches toggleAttack`() {
-        val ctx = context(memory("options.txt" to text))
-        AttackHoldStep().apply(ctx, emptyMap())
-        assertEquals(text.replace("toggleAttack:true", "toggleAttack:false"), ctx.text("options.txt"))
     }
 }

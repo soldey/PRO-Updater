@@ -114,7 +114,7 @@ class InstallerTest {
         assertEquals("3.4.0", state.packVersion)
         assertNotNull(state.cleanInstallAt)
         assertEquals(3, state.files.size)
-        assertEquals(setOf("skyblocker_loadout", "nofrills_command_keybinds", "nofrills_clear_slot_bindings", "nofrills_viewmodel", "resource_packs", "attack_hold"), state.steps.keys)
+        assertEquals(setOf("skyblocker_loadout", "nofrills_command_keybinds", "nofrills_clear_slot_bindings", "nofrills_viewmodel", "resource_packs"), state.steps.keys)
         assertEquals(listOf("vanilla", "file/FurSky Reborn.cats.zip"), state.resourcePacks)
         assertTrue(state.welcomePending)
         assertEquals(report.backup, state.cleanInstallBackup)
@@ -187,6 +187,16 @@ class InstallerTest {
         assertEquals(FirstRunChoice.AUTHOR, state().preset)
         assertEquals(LaunchMode.UP_TO_DATE, run().mode)
         assertEquals(before, read("config/skyblocker.json"))
+    }
+
+    @Test
+    fun `a clean install starts on Hold even when a synced options file says Toggle`() {
+        pack("3.4.0")
+        write("options.txt", "version:4790\ntoggleAttack:true\nfov:1.0\n")
+        run()
+        val options = read("options.txt")!!.lines()
+        assertTrue("toggleAttack:false" in options)
+        assertTrue("fov:1.0" in options, "the synced values stay otherwise")
     }
 
     @Test

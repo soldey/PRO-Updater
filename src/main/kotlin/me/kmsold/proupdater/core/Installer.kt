@@ -139,6 +139,17 @@ class Installer(
         val applied = FilePlan.execute(FilePlan.plan(kind, manifest), files, context::log)
         state.files.putAll(applied)
         context.log("${kind.name.lowercase()}: ${applied.size} of ${manifest.payload().size} pack file(s) written")
+        if (kind != PlanKind.UPDATE) holdAttack(files, context)
+    }
+
+    /**
+     * Attack/Destroy starts on Hold with every full layout of the pack, whatever a synced
+     * `options.txt` says; updates leave it to the player.
+     */
+    private fun holdAttack(files: FileChanges, context: StepContext) {
+        if (files.editOptions { it["toggleAttack"] = "false" } == EditResult.CHANGED) {
+            context.log("Attack/Destroy set to Hold")
+        }
     }
 
     private fun applyDefaultSteps(context: StepContext, state: InstallState) {

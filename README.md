@@ -24,7 +24,7 @@ files while you play would not stick.
 
 | Situation | What happens |
 | --- | --- |
-| Fresh install | All pack settings are copied, then the setup steps below run with their defaults - the author's preset. If Modrinth App already wrote an `options.txt` (game options sync), your values stay and only missing keys come from the pack. Then the welcome screen asks how to go on. |
+| Fresh install | All pack settings are copied, then the setup steps below run with their defaults - the author's preset. If Modrinth App already wrote an `options.txt` (game options sync), your values stay and only missing keys come from the pack - except Attack/Destroy, which always starts on Hold. Then the welcome screen asks how to go on. |
 | Pack update | Only files you do not have yet are added. Nothing you have is overwritten. New setup steps are offered on the screen, not applied. |
 | Most of the pack's configs already there, but PRO-Updater never ran (a profile set up by hand) | Handled like an update. A few configs that mods write on their own during the first launch do not count. |
 | Same pack version | Nothing, apart from what you queued on the screen. |
@@ -54,7 +54,6 @@ Before any run that overwrites or deletes a file, the old files are zipped into
 | Clear NoFrills slot bindings | Empties the slot bindings (the feature and its key stay). Fresh install and button only, **never** after an update. |
 | NoFrills Viewmodel | Turns on NoFrills Viewmodel (where the held item sits, its size and swing) with the pack's values, or, with "Pack values" off, only switches it on and keeps your values. |
 | Resource packs | Turns on the pack's resource packs in order, without a resource reload. Packs you turned on yourself stay on, above them. |
-| Attack/Destroy: Hold | Sets Attack/Destroy back to Hold. |
 
 ## The screen
 
