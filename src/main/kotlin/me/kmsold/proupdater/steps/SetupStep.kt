@@ -26,10 +26,10 @@ enum class OptionKind { KEY, TOGGLE }
 
 /**
  * One setting of a step. Values travel as strings: a Minecraft key name for [OptionKind.KEY],
- * `true`/`false` for [OptionKind.TOGGLE]. [glfwOnly] keys end up as GLFW codes in a mod config,
- * so only keyboard keys with a known code are accepted.
+ * `true`/`false` for [OptionKind.TOGGLE]. [asCode] keys end up as a number in a mod config (see
+ * [KeyNames]), so only keyboard keys and mouse buttons with a known number are accepted.
  */
-data class StepOption(val id: String, val kind: OptionKind, val default: String, val glfwOnly: Boolean = false)
+data class StepOption(val id: String, val kind: OptionKind, val default: String, val asCode: Boolean = false)
 
 /**
  * One thing the mod can set up. [apply] works on file contents only, never on the running game,
@@ -72,7 +72,7 @@ interface SetupStep {
         val valid = when {
             value == null -> false
             option.kind == OptionKind.TOGGLE -> value == "true" || value == "false"
-            option.glfwOnly -> value == KeyNames.UNBOUND || KeyNames.glfwCode(value) != null
+            option.asCode -> value == KeyNames.UNBOUND || KeyNames.code(value) != null
             else -> value.startsWith("key.")
         }
         option.id to if (valid) value!! else option.default

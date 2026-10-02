@@ -1,9 +1,11 @@
 package me.kmsold.proupdater.core
 
 /**
- * Minecraft key names (`key.keyboard.u`) next to the GLFW key codes some mods store instead
- * (NoFrills writes `"key": 85` for U). Written out by hand from the GLFW key table, without
- * Minecraft classes, because it is used before the game starts.
+ * Minecraft key names (`key.keyboard.u`, `key.mouse.4`) next to the single number some mods store
+ * instead: the GLFW key code for a keyboard key, the button index for a mouse button. NoFrills
+ * writes `"key": 85` for U and `"key": 3` for the first side button; keyboard codes start at 32,
+ * so the two never meet. Written out by hand from the GLFW tables, without Minecraft classes,
+ * because it is used before the game starts.
  */
 object KeyNames {
 
@@ -29,14 +31,19 @@ object KeyNames {
                 "right.shift" to 344, "right.control" to 345, "right.alt" to 346, "right.win" to 347, "menu" to 348,
             ),
         )
-    }.mapKeys { "key.keyboard.${it.key}" }
+    }.mapKeys { "key.keyboard.${it.key}" } + mouseButtons()
+
+    /** Minecraft names the first three buttons and numbers the rest from 4, one above the index. */
+    private fun mouseButtons(): Map<String, Int> =
+        mapOf("key.mouse.left" to 0, "key.mouse.right" to 1, "key.mouse.middle" to 2) +
+            (4..8).associate { "key.mouse.$it" to it - 1 }
 
     private val names: Map<Int, String> = codes.entries.associate { (name, code) -> code to name }
 
-    /** The GLFW code of a keyboard key name, or null for mouse buttons, unbound and unknown names. */
-    fun glfwCode(name: String): Int? = codes[name]
+    /** The number for a keyboard key or mouse button name, or null for unbound and unknown names. */
+    fun code(name: String): Int? = codes[name]
 
-    fun nameOf(glfwCode: Int): String? = names[glfwCode]
+    fun nameOf(code: Int): String? = names[code]
 
     fun isKeyboard(name: String) = name.startsWith("key.keyboard.")
 }

@@ -14,6 +14,7 @@ import net.minecraft.client.gui.components.MultiLineTextWidget
 import net.minecraft.client.gui.components.StringWidget
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.KeyEvent
+import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.CommonComponents
 import net.minecraft.network.chat.Component
 
@@ -192,8 +193,13 @@ class SetupWizardScreen(
         rebuildWidgets()
     }
 
+    /** One wide column for a few keys, so their labels fit; more columns for long lists. */
     private fun columnsFor(step: SetupStep): Int {
-        val wanted = if (step.options.size > 8) 3 else 2
+        val wanted = when {
+            step.options.size > 8 -> 3
+            step.options.size > 4 -> 2
+            else -> 1
+        }
         val fits = ((width - 16 + GAP) / (COLUMN + GAP)).coerceAtLeast(1)
         return minOf(wanted, fits)
     }
@@ -211,16 +217,27 @@ class SetupWizardScreen(
     }
 
     override fun keyPressed(event: KeyEvent): Boolean {
-        val option = listening ?: return super.keyPressed(event)
-        val step = pages.getOrNull(page) ?: return super.keyPressed(event)
-        val name = if (event.key() == ESCAPE) KeyNames.UNBOUND else InputConstants.getKey(event).name
-        // Keys that end up as GLFW codes in a mod config must be plain keyboard keys.
-        if (!option.glfwOnly || name == KeyNames.UNBOUND || KeyNames.glfwCode(name) != null) {
+        if (listening == null) return super.keyPressed(event)
+        bind(if (event.key() == ESCAPE) KeyNames.UNBOUND else InputConstants.getKey(event).name)
+        return true
+    }
+
+    /** While a key waits, any mouse button binds it, side buttons included, like vanilla Controls. */
+    override fun mouseClicked(event: MouseButtonEvent, doubleClick: Boolean): Boolean {
+        if (listening == null) return super.mouseClicked(event, doubleClick)
+        bind(InputConstants.Type.MOUSE.getOrCreate(event.button()).name)
+        return true
+    }
+
+    private fun bind(name: String) {
+        val option = listening ?: return
+        val step = pages.getOrNull(page) ?: return
+        // Keys that end up as a number in a mod config need one we know.
+        if (!option.asCode || name == KeyNames.UNBOUND || KeyNames.code(name) != null) {
             panel.options.getValue(step.id)[option.id] = name
         }
         listening = null
         rebuildWidgets()
-        return true
     }
 
     override fun onClose() = McCompat.setScreen(parent)

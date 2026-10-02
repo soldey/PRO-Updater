@@ -102,16 +102,24 @@ class StepsTest {
     }
 
     @Test
-    fun `chosen keys are written as glfw codes and unbinding switches the bind off`() {
+    fun `chosen keys are written as numbers and unbinding switches the bind off`() {
         val ctx = context(memory("config/NoFrills/Configuration.json" to noFrills), "nofrills")
         NoFrillsCommandKeybindsStep().apply(
             ctx,
-            mapOf("equipment" to "key.keyboard.grave.accent", "wardrobe" to KeyNames.UNBOUND, "trades" to "key.mouse.left"),
+            mapOf("equipment" to "key.keyboard.grave.accent", "wardrobe" to KeyNames.UNBOUND, "trades" to "key.mouse.4"),
         )
         val binds = binds(ctx.text("config/NoFrills/Configuration.json")).associateBy { it.get("command").asString }
         assertEquals(96, binds.getValue("/eq").get("key").asInt)
         assertFalse(binds.getValue("/wardrobe").get("enabled").asBoolean)
-        // A mouse button has no GLFW key code, so the default is used.
+        // The first side button, stored the way NoFrills stores it: the button index.
+        assertEquals(3, binds.getValue("/trades").get("key").asInt)
+    }
+
+    @Test
+    fun `a key name without a number falls back to the default`() {
+        val ctx = context(memory("config/NoFrills/Configuration.json" to noFrills), "nofrills")
+        NoFrillsCommandKeybindsStep().apply(ctx, mapOf("trades" to "key.mouse.9"))
+        val binds = binds(ctx.text("config/NoFrills/Configuration.json")).associateBy { it.get("command").asString }
         assertEquals(45, binds.getValue("/trades").get("key").asInt)
     }
 

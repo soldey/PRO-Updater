@@ -20,7 +20,8 @@ private fun StepContext.reportEdit(result: EditResult, what: String) {
 
 /**
  * NoFrills custom keybinds that run a command (`customKeybinds.data.binds` in
- * `config/NoFrills/Configuration.json`, keys as GLFW codes). Shared by every step that binds a command.
+ * `config/NoFrills/Configuration.json`, keys as numbers, see [KeyNames]). Shared by every step that
+ * binds a command.
  *
  * Binds are matched by command, so the player's own binds stay and nothing is added twice.
  * `allowInGui` is always false: the command keys never fire inside a menu, where the same keys
@@ -51,7 +52,7 @@ object NoFrillsKeybinds {
 
     /** Returns true when [binds] changed. */
     private fun upsert(binds: JsonArray, command: Command, keyName: String): Boolean {
-        val code = KeyNames.glfwCode(keyName)
+        val code = KeyNames.code(keyName)
         val existing = binds.filterIsInstance<JsonObject>().firstOrNull { bind ->
             val text = bind.get("command")?.takeIf { it.isJsonPrimitive }?.asString?.trim()?.lowercase()
             text != null && text in command.aliases
@@ -92,7 +93,7 @@ class NoFrillsCommandKeybindsStep : SetupStep {
     override val requiredMods = listOf(NOFRILLS)
     override val files = listOf(CONFIG)
 
-    override val options = COMMANDS.map { StepOption(it.option, OptionKind.KEY, it.defaultKey, glfwOnly = true) }
+    override val options = COMMANDS.map { StepOption(it.option, OptionKind.KEY, it.defaultKey, asCode = true) }
 
     override fun apply(context: StepContext, options: Map<String, String>) {
         val values = resolve(options)

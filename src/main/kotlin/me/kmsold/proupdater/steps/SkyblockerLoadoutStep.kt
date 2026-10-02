@@ -30,7 +30,7 @@ class SkyblockerLoadoutStep : SetupStep {
     override val files = listOf(GamePaths.OPTIONS, SKYBLOCKER_CONFIG, SKYHANNI_CONFIG, ODIN_CONFIG, NOFRILLS_CONFIG)
 
     override val options: List<StepOption> =
-        listOf(StepOption(OPEN_LOADOUTS.option, OptionKind.KEY, OPEN_LOADOUTS.defaultKey, glfwOnly = true)) +
+        listOf(StepOption(OPEN_LOADOUTS.option, OptionKind.KEY, OPEN_LOADOUTS.defaultKey, asCode = true)) +
             SLOT_DEFAULTS.mapIndexed { i, key -> StepOption(slotOption(i + 1), OptionKind.KEY, "key.keyboard.$key") } +
             StepOption(UNBIND_IQ_WARDROBE, OptionKind.TOGGLE, "true")
 
