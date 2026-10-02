@@ -34,6 +34,13 @@ class DirectorySource(val root: Path) : FileSource {
 
     override fun exists(path: String): Boolean = GamePaths.isSafe(path) && resolve(path).exists()
 
+    /** Last modification time in epoch milliseconds, or null when the file is missing. */
+    fun modifiedAt(path: String): Long? {
+        if (!GamePaths.isSafe(path)) return null
+        val file = resolve(path)
+        return if (file.exists()) runCatching { Files.getLastModifiedTime(file).toMillis() }.getOrNull() else null
+    }
+
     /** Writes [changes] to disk; a null value deletes the file. Each file is replaced atomically. */
     fun commit(changes: Map<String, ByteArray?>) {
         for ((path, bytes) in changes) {

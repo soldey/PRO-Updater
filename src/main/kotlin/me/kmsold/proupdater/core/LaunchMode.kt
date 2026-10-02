@@ -20,14 +20,16 @@ enum class LaunchMode {
     companion object {
 
         /**
-         * [exists] answers for game-relative paths. A pack update is never a clean install: once the
-         * state remembers a pack version, only [UPDATE] or [UP_TO_DATE] can come out.
+         * [existedBefore] answers for game-relative paths whether the file was there before this
+         * launch: some mods write their config while their mixins load, before PRO-Updater runs, and
+         * those files must not make a fresh profile look used. A pack update is never a clean install:
+         * once the state remembers a pack version, only [UPDATE] or [UP_TO_DATE] can come out.
          */
-        fun detect(state: InstallState?, manifest: Manifest?, exists: (String) -> Boolean): LaunchMode {
+        fun detect(state: InstallState?, manifest: Manifest?, existedBefore: (String) -> Boolean): LaunchMode {
             if (manifest == null) return NO_MANIFEST
             val installed = state?.packVersion
             if (installed == null) {
-                val anyConfig = manifest.payload().keys.any { it.startsWith("config/") && exists(it) }
+                val anyConfig = manifest.payload().keys.any { it.startsWith("config/") && existedBefore(it) }
                 return if (anyConfig) LEGACY_MIGRATION else CLEAN_INSTALL
             }
             // A downgrade is handled like an update too: adding missing files is always safe.

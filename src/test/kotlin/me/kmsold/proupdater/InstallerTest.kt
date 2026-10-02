@@ -82,7 +82,12 @@ class InstallerTest {
         write(GamePaths.RESOURCE_PACKS, """["vanilla","file/FurSky Reborn.cats.zip"]""")
     }
 
-    private fun run() = Installer(game, { it in mods }) { clock }.run().also { clock = clock.plusMinutes(1) }
+    /** Every file the test wrote counts as written before the launch, unless [launchStartedAt] says otherwise. */
+    private fun run(launchStartedAt: Long = Long.MAX_VALUE) =
+        Installer(game, { it in mods }, { clock }, launchStartedAt).run().also { clock = clock.plusMinutes(1) }
+
+    private fun age(path: String, millis: Long) =
+        java.nio.file.Files.setLastModifiedTime(game.resolve(path), java.nio.file.attribute.FileTime.fromMillis(millis))
 
     private fun state() = ModelJson.state(read(GamePaths.STATE)!!)!!
 
@@ -212,6 +217,30 @@ class InstallerTest {
         assertEquals("3.5.0", state().packVersion)
 
         assertEquals(LaunchMode.UP_TO_DATE, run().mode)
+    }
+
+    @Test
+    fun `configs that early mods write during the first launch do not hide a clean install`() {
+        pack("3.4.0")
+        val start = System.currentTimeMillis()
+        // Sodium, Lithium and friends write these while their mixins load, before PRO-Updater runs.
+        write("config/skyblocker.json", "written by a mixin plugin")
+        age("config/skyblocker.json", start + 500)
+        val report = run(launchStartedAt = start)
+        assertEquals(LaunchMode.CLEAN_INSTALL, report.mode)
+        assertTrue(read("config/skyblocker.json")!!.contains("\"enableWardrobeHelper\": true"))
+        assertTrue(state().welcomePending)
+        assertTrue(report.log.any { "written during this launch" in it })
+    }
+
+    @Test
+    fun `configs from an earlier launch still mean the profile was set up`() {
+        pack("3.4.0")
+        val start = System.currentTimeMillis()
+        write("config/skyblocker.json", "player's own")
+        age("config/skyblocker.json", start - 60_000)
+        assertEquals(LaunchMode.LEGACY_MIGRATION, run(launchStartedAt = start).mode)
+        assertEquals("player's own", read("config/skyblocker.json"))
     }
 
     @Test

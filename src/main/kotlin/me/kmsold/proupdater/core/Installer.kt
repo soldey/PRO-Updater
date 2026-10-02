@@ -33,8 +33,23 @@ class Installer(
     private val gameDir: Path,
     private val isModLoaded: (String) -> Boolean,
     private val now: () -> ZonedDateTime = Backups::now,
+    /** When this game process started, epoch milliseconds; files written after it are this launch's own. */
+    private val launchStartedAt: Long = processStart(),
 ) {
     private val disk = DirectorySource(gameDir)
+
+    /**
+     * True when [path] was already there before this launch. Sodium, Lithium, C2ME, FerriteCore,
+     * VMP and BadOptimizations create their config while their mixins load, before any pre-launch
+     * code; on a fresh profile those files exist but say nothing about the player. File times can
+     * be a second coarse, hence the margin.
+     */
+    private fun existedBefore(path: String, context: StepContext): Boolean {
+        val modified = disk.modifiedAt(path) ?: return false
+        if (modified < launchStartedAt - TIME_MARGIN_MS) return true
+        context.log("$path was written during this launch, before PRO-Updater ran; not counted as an existing setup")
+        return false
+    }
 
     fun run(): RunReport {
         val files = FileChanges(disk)
@@ -49,7 +64,7 @@ class Installer(
         val state = oldState ?: InstallState()
         val timestamp = now()
 
-        val mode = LaunchMode.detect(oldState, manifest, disk::exists)
+        val mode = LaunchMode.detect(oldState, manifest) { existedBefore(it, context) }
         context.log("Launch mode: $mode (installed ${oldState?.packVersion ?: "none"}, pack ${manifest?.version ?: "none"})")
         val reasons = mutableListOf<String>()
 
@@ -187,6 +202,16 @@ class Installer(
         context.log("First-run choice: $choice")
         state.preset = choice
         state.welcomePending = false
+    }
+
+    companion object {
+        private const val TIME_MARGIN_MS = 2_000L
+
+        /** The JVM start, or, without java.management, the process start; unknown counts every file as old. */
+        fun processStart(): Long =
+            runCatching { java.lang.management.ManagementFactory.getRuntimeMXBean().startTime }
+                .recoverCatching { ProcessHandle.current().info().startInstant().get().toEpochMilli() }
+                .getOrDefault(Long.MAX_VALUE)
     }
 
     /** Queues the contents of backup [name] into [files]. Returns false when it could not be read. */
