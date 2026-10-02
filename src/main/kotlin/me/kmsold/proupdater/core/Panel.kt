@@ -26,9 +26,18 @@ class Panel(private val gameDir: Path, private val isModLoaded: (String) -> Bool
 
     val steps: List<SetupStep> = Steps.all
 
-    /** Which steps are ticked; starts with what is queued, or with the steps that are new for this player. */
+    /**
+     * Which steps are switched on. With something queued, exactly the queued steps; otherwise the
+     * steps that are new for this player or were never applied in this profile. Steps that wipe the
+     * player's data, like clearing slot bindings, start off unless queued.
+     */
     val selected: MutableMap<String, Boolean> = steps.associate { step ->
-        step.id to (pending.steps.any { it.id == step.id } || (isAvailable(step) && isNew(step)))
+        val on = if (pending.steps.isNotEmpty()) {
+            pending.steps.any { it.id == step.id }
+        } else {
+            isAvailable(step) && step.offeredOnUpdate && (isNew(step) || state?.steps?.containsKey(step.id) != true)
+        }
+        step.id to on
     }.toMutableMap()
 
     /** Option values per step: queued ones, else the last applied ones, else the defaults. */

@@ -43,7 +43,7 @@ class ProUpdaterScreen(
             setupLabel = setupLabel.copy().append(Component.translatable("proupdater.screen.new").withStyle(ChatFormatting.YELLOW))
         }
         addRenderableWidget(
-            Button.builder(setupLabel) { McCompat.setScreen(SetupScreen(this, panel)) }
+            Button.builder(setupLabel) { McCompat.setScreen(SetupWizardScreen(this, panel)) }
                 .bounds(left, y, WIDTH, 20)
                 .tooltip(Tooltip.create(Component.translatable("proupdater.screen.setup.tooltip")))
                 .build(),

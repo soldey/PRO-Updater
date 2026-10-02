@@ -46,7 +46,8 @@ Before any run that overwrites or deletes a file, the old files are zipped into
 
 Open it from Mod Menu or with `/proupdater`. It shows which pack settings are installed and has:
 
-* **Setup...** - the steps above: tick them, set their keys, apply the ticked ones.
+* **Setup...** - a wizard through the steps above, one page each: what the step does, whether
+  to apply it, its keys. A summary at the end queues the chosen ones.
 * **Apply pack settings** - every settings file replaced with the pack's and the default steps,
   i.e. the setup as the pack author has it. The replaced files are backed up first.
 * **Make a backup** - saves `options.txt`, the pack's configs and every file a step changes,
