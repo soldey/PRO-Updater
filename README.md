@@ -26,7 +26,7 @@ files while you play would not stick.
 | --- | --- |
 | Fresh install | All pack settings are copied, then the setup steps below run with their defaults - the author's preset. If Modrinth App already wrote an `options.txt` (game options sync), your values stay and only missing keys come from the pack. Then the welcome screen asks how to go on. |
 | Pack update | Only files you do not have yet are added. Nothing you have is overwritten. New setup steps are offered on the screen, not applied. |
-| Coming from Skyblock PRO 3.3.x or older | Handled like an update. |
+| Most of the pack's configs already there, but PRO-Updater never ran (a profile set up by hand) | Handled like an update. A few configs that mods write on their own during the first launch do not count. |
 | Same pack version | Nothing, apart from what you queued on the screen. |
 
 ### The first start

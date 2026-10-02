@@ -35,8 +35,14 @@ class LaunchModeTest {
     }
 
     @Test
-    fun `no state but pack configs present is a player from the old layout`() {
-        assertEquals(LaunchMode.LEGACY_MIGRATION, LaunchMode.detect(null, manifest("3.4.0")) { it == "config/skyblocker.json" })
+    fun `no state but most pack configs present is a player from the old layout`() {
+        assertEquals(LaunchMode.LEGACY_MIGRATION, LaunchMode.detect(null, manifest("3.4.0")) { it.startsWith("config/") })
+    }
+
+    @Test
+    fun `a few configs that early mods wrote are not a setup`() {
+        // Half is not more than half: one of the two pack configs.
+        assertEquals(LaunchMode.CLEAN_INSTALL, LaunchMode.detect(null, manifest("3.4.0")) { it == "config/skyblocker.json" })
     }
 
     @Test

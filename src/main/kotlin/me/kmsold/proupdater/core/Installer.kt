@@ -65,6 +65,10 @@ class Installer(
         val timestamp = now()
 
         val mode = LaunchMode.detect(oldState, manifest) { existedBefore(it, context) }
+        if (oldState?.packVersion == null && manifest != null) {
+            val configs = manifest.payload().keys.filter { it.startsWith("config/") }
+            context.log("${configs.count { disk.exists(it) }} of ${configs.size} pack config files are already in config/")
+        }
         context.log("Launch mode: $mode (installed ${oldState?.packVersion ?: "none"}, pack ${manifest?.version ?: "none"})")
         val reasons = mutableListOf<String>()
 

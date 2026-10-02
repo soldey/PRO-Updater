@@ -234,23 +234,42 @@ class InstallerTest {
     }
 
     @Test
+    fun `a first launch that Essential cut short is still a clean install`() {
+        // Essential ends the first launch to install its updates before PRO-Updater runs; the
+        // configs the early mods wrote stay behind and are older than the next launch.
+        pack("3.4.0", mapOf("config/lithium.properties" to "pack", "config/c2me.toml" to "pack"))
+        val start = System.currentTimeMillis()
+        write("config/lithium.properties", "mod defaults")
+        age("config/lithium.properties", start - 60_000)
+        val report = run(launchStartedAt = start)
+        assertEquals(LaunchMode.CLEAN_INSTALL, report.mode)
+        assertEquals("pack", read("config/lithium.properties"))
+        assertTrue(state().welcomePending)
+        assertTrue(report.log.any { "1 of 4 pack config files" in it })
+    }
+
+    @Test
     fun `configs from an earlier launch still mean the profile was set up`() {
         pack("3.4.0")
         val start = System.currentTimeMillis()
         write("config/skyblocker.json", "player's own")
+        write("config/NoFrills/Configuration.json", "player's own")
         age("config/skyblocker.json", start - 60_000)
+        age("config/NoFrills/Configuration.json", start - 60_000)
         assertEquals(LaunchMode.LEGACY_MIGRATION, run(launchStartedAt = start).mode)
         assertEquals("player's own", read("config/skyblocker.json"))
     }
 
     @Test
     fun `a player from the old layout is not overwritten`() {
-        pack("3.4.0")
+        pack("3.4.0", mapOf("config/extra.json" to "{}\n"))
         write("config/skyblocker.json", "player's own")
+        write("config/extra.json", "player's extra")
         write("options.txt", "version:4790\n")
         val report = run()
         assertEquals(LaunchMode.LEGACY_MIGRATION, report.mode)
         assertEquals("player's own", read("config/skyblocker.json"))
+        assertEquals("player's extra", read("config/extra.json"))
         assertEquals("version:4790\n", read("options.txt"))
         assertEquals(packNoFrills, read("config/NoFrills/Configuration.json"))
         assertNull(state().cleanInstallAt)
