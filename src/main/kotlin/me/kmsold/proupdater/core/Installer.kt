@@ -167,6 +167,12 @@ class Installer(
         pending.restoreBackup?.let { name ->
             if (restore(name, files, context)) context.notice("proupdater.notice.restored", name)
         }
+        pending.modRestore?.let { request ->
+            if (restore(request.backup, files, context, request.paths.toSet())) {
+                context.log("Restored ${request.mods.joinToString()} from ${request.backup}")
+                context.notice("proupdater.notice.modsRestored", request.mods.joinToString(), request.backup)
+            }
+        }
         if (pending.applyPackDefaults) {
             if (manifest == null) {
                 context.log("Apply pack settings asked for, but there is no ${GamePaths.MANIFEST}")
@@ -229,8 +235,8 @@ class Installer(
                 .getOrDefault(Long.MAX_VALUE)
     }
 
-    /** Queues the contents of backup [name] into [files]. Returns false when it could not be read. */
-    private fun restore(name: String, files: FileChanges, context: StepContext): Boolean {
+    /** Queues the contents of backup [name], or just [only], into [files]. Returns false when it could not be read. */
+    private fun restore(name: String, files: FileChanges, context: StepContext, only: Set<String>? = null): Boolean {
         val zip = gameDir.resolve(GamePaths.BACKUPS).resolve(name)
         val contents = if (GamePaths.isSafe(name) && '/' !in name) runCatching { Backups.unzip(zip.readBytes()) }.getOrNull() else null
         if (contents == null) {
@@ -238,8 +244,8 @@ class Installer(
             context.notice("proupdater.notice.restoreFailed", name)
             return false
         }
-        Backups.restore(contents, files)
-        context.log("Restored backup $name")
+        Backups.restore(contents, files, only)
+        if (only == null) context.log("Restored backup $name")
         return true
     }
 }

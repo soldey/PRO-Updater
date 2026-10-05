@@ -111,6 +111,19 @@ class Panel(private val gameDir: Path, private val isModLoaded: (String) -> Bool
         save()
     }
 
+    /** The files backup [name] can change, or null when it cannot be read. */
+    fun backupPaths(name: String): List<String>? {
+        if (!GamePaths.isSafe(name) || '/' in name) return null
+        val zip = gameDir.resolve(GamePaths.BACKUPS).resolve(name)
+        return runCatching { Backups.unzip(java.nio.file.Files.readAllBytes(zip)) }.getOrNull()?.let(Backups::paths)
+    }
+
+    /** Queues the settings of [groups] from backup [name] for the next start. */
+    fun queueModRestore(name: String, groups: List<ModGroup>) {
+        pending.modRestore = ModRestore.of(name, groups.flatMap { it.paths }.distinct(), groups.map { it.name })
+        save()
+    }
+
     fun clearQueue() {
         pending = PendingActions()
         save()

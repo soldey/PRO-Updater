@@ -66,6 +66,8 @@ Open it from Mod Menu or with `/proupdater`. It shows which pack settings are in
 * **Make a backup** - saves `options.txt`, the pack's configs and every file a step changes,
   right away. Not all of `config/`: most of it is caches.
 * **Restore a backup...** - one of the newest backups, yours or automatic.
+* **Restore mod settings...** - pick a backup, then tick the mods whose settings to take from
+  it; everything else stays as it is.
 
 Everything except making a backup is **queued** and happens on the next game start.
 

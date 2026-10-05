@@ -78,13 +78,22 @@ object Backups {
         Contents(parsed, files)
     }.getOrNull()
 
-    /** Puts the backed-up files back and removes the ones the backed-up run created. */
-    fun restore(contents: Contents, files: FileChanges) {
-        for ((path, bytes) in contents.files) files.write(path, bytes)
+    /**
+     * Puts the backed-up files back and removes the ones the backed-up run created; with [only],
+     * just those paths, so one mod's settings can come back while everything else stays.
+     */
+    fun restore(contents: Contents, files: FileChanges, only: Set<String>? = null) {
+        for ((path, bytes) in contents.files) {
+            if (only == null || path in only) files.write(path, bytes)
+        }
         for (path in contents.info.created) {
-            if (GamePaths.isSafe(path) && path !in contents.files) files.delete(path)
+            if (GamePaths.isSafe(path) && path !in contents.files && (only == null || path in only)) files.delete(path)
         }
     }
+
+    /** Every path a backup can change: the saved files and the ones it would remove. */
+    fun paths(contents: Contents): List<String> =
+        (contents.files.keys + contents.info.created.filter(GamePaths::isSafe)).distinct().sorted()
 
     /** What "Make a backup" saves: every file PRO-Updater may change. Never all of `config/`, which is mostly caches. */
     fun managedPaths(manifest: Manifest?, state: InstallState?): List<String> =

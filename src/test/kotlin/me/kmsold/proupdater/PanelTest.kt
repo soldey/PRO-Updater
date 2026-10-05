@@ -68,6 +68,25 @@ class PanelTest {
     }
 
     @Test
+    fun `a mod restore is queued with every file of the picked mods`() {
+        val panel = Panel(game, allMods)
+        val groups = listOf(
+            me.kmsold.proupdater.core.ModGroup("skyblocker", "Skyblocker", listOf("config/skyblocker.json", "config/skyblocker/hud_widgets.json")),
+            me.kmsold.proupdater.core.ModGroup("minecraft", "Minecraft (options.txt)", listOf("options.txt")),
+        )
+        panel.queueModRestore("2026-10-05_12-00-00_manual.zip", groups)
+        val queued = ModelJson.pending(game.resolve(GamePaths.PENDING).toFile().readText())!!.modRestore!!
+        assertEquals("2026-10-05_12-00-00_manual.zip", queued.backup)
+        assertEquals(listOf("config/skyblocker.json", "config/skyblocker/hud_widgets.json", "options.txt"), queued.paths)
+        assertEquals(listOf("Skyblocker", "Minecraft (options.txt)"), queued.mods)
+    }
+
+    @Test
+    fun `backup names that leave the backups folder are not read`() {
+        assertEquals(null, Panel(game, allMods).backupPaths("../state.json"))
+    }
+
+    @Test
     fun `queueing nothing removes the queue file`() {
         val panel = Panel(game, allMods)
         panel.queueSelectedSteps()

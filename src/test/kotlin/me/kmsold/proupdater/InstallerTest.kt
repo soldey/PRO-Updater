@@ -377,6 +377,52 @@ class InstallerTest {
     }
 
     @Test
+    fun `one mod's settings come back from a backup while the rest stays`() {
+        pack("3.4.0")
+        run()
+        write("config/skyblocker/hud_widgets.json", "skyblocker widgets")
+        val name = Backups.makeManual(game, ModelJson.manifest(read(GamePaths.MANIFEST)!!), state(), clock)!!
+        clock = clock.plusMinutes(1)
+        val skyblockerBefore = read("config/skyblocker.json")
+        write("config/skyblocker.json", "changed later")
+        write("config/NoFrills/Configuration.json", "changed later")
+        write("options.txt", "version:4790\nfov:0.1\n")
+
+        write(
+            GamePaths.PENDING,
+            ModelJson.write(
+                PendingActions().apply {
+                    modRestore = me.kmsold.proupdater.core.ModRestore.of(name, listOf("config/skyblocker.json"), listOf("Skyblocker"))
+                },
+            ),
+        )
+        val report = run()
+        assertEquals(skyblockerBefore, read("config/skyblocker.json"))
+        assertEquals("changed later", read("config/NoFrills/Configuration.json"))
+        assertEquals("version:4790\nfov:0.1\n", read("options.txt"))
+        assertNotNull(report.backup, "the files it overwrote are backed up first")
+        assertTrue(report.notices.any { it.key == "proupdater.notice.modsRestored" && it.args == listOf("Skyblocker", name) })
+    }
+
+    @Test
+    fun `restoring a mod from a clean install backup removes the files the install created for it`() {
+        pack("3.4.0")
+        write("options.txt", "version:4790\n")
+        val install = run().backup!!
+        write(
+            GamePaths.PENDING,
+            ModelJson.write(
+                PendingActions().apply {
+                    modRestore = me.kmsold.proupdater.core.ModRestore.of(install, listOf("config/NoFrills/Configuration.json"), listOf("NoFrills"))
+                },
+            ),
+        )
+        run()
+        assertFalse(game.resolve("config/NoFrills/Configuration.json").exists())
+        assertTrue(game.resolve("config/skyblocker.json").exists())
+    }
+
+    @Test
     fun `old backups are pruned`() {
         val dir = game.resolve(GamePaths.BACKUPS)
         repeat(Backups.KEEP + 3) { i -> Backups.write(dir, "2026-01-%02d_00-00-00_x.zip".format(i + 1), ByteArray(1)) }

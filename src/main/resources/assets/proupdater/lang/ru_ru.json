@@ -90,5 +90,19 @@
     "proupdater.restart.title": "Нужен перезапуск",
     "proupdater.restart.text": "Выбор применится при следующем запуске игры, до того как моды загрузят свои настройки. Текущие файлы сначала сохраняются в резервную копию.",
     "proupdater.restart.quit": "Выйти из игры",
-    "proupdater.restart.later": "Позже"
+    "proupdater.restart.later": "Позже",
+    "proupdater.screen.restoreMods": "Восстановить настройки модов...",
+    "proupdater.screen.restoreMods.tooltip": "При следующем запуске берёт из любой резервной копии настройки отмеченных модов. Остальное не меняется.",
+    "proupdater.screen.queue.modRestore": "настройки модов (%s) из %s",
+    "proupdater.modRestore.pickTitle": "Настройки модов: выберите копию",
+    "proupdater.modRestore.pickHint": "Дальше отметите моды, настройки которых взять из неё.",
+    "proupdater.modRestore.title": "Восстановить из %s",
+    "proupdater.modRestore.hint": "Отмеченные моды получат настройки из этой копии при следующем запуске. Остальное не меняется. Наведите на мод, чтобы увидеть его файлы.",
+    "proupdater.modRestore.all": "Выбрать все",
+    "proupdater.modRestore.none": "Снять все",
+    "proupdater.modRestore.apply": "Восстановить выбранные (%s)",
+    "proupdater.modRestore.page": "Страница %s из %s",
+    "proupdater.modRestore.empty": "В этой копии нет файлов настроек.",
+    "proupdater.modRestore.unreadable": "Не удалось прочитать эту копию.",
+    "proupdater.notice.modsRestored": "Настройки восстановлены из %2$s: %1$s."
 }

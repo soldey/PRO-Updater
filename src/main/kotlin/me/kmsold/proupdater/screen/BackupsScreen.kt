@@ -9,9 +9,18 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.CommonComponents
 import net.minecraft.network.chat.Component
 
-/** The newest backups; picking one queues its restore for the next start. */
-class BackupsScreen(private val parent: Screen, private val panel: Panel) :
-    Screen(Component.translatable("proupdater.backups.title")) {
+/**
+ * The newest backups. [onPick] decides what picking one does: queue a full restore, or go on to
+ * choose which mods to take from it. [highlighted] marks the backup that is already queued.
+ */
+class BackupsScreen(
+    private val parent: Screen,
+    private val panel: Panel,
+    title: Component,
+    private val hint: Component,
+    private val highlighted: String? = null,
+    private val onPick: (String) -> Unit,
+) : Screen(title) {
 
     override fun init() {
         val left = width / 2 - WIDTH / 2
@@ -20,9 +29,7 @@ class BackupsScreen(private val parent: Screen, private val panel: Panel) :
 
         addRenderableWidget(StringWidget(left, y, WIDTH, 9, title, font))
         y += 12
-        addRenderableWidget(
-            StringWidget(left, y, WIDTH, 9, Component.translatable("proupdater.backups.hint").withStyle(ChatFormatting.GRAY), font),
-        )
+        addRenderableWidget(StringWidget(left, y, WIDTH, 9, hint.copy().withStyle(ChatFormatting.GRAY), font))
         y += 18
 
         if (backups.isEmpty()) {
@@ -31,13 +38,8 @@ class BackupsScreen(private val parent: Screen, private val panel: Panel) :
         }
         for (name in backups) {
             val label = Component.literal(name.removeSuffix(".zip"))
-            val shown = if (name == panel.pending.restoreBackup) label.withStyle(ChatFormatting.YELLOW) else label
-            addRenderableWidget(
-                Button.builder(shown) {
-                    panel.queueRestore(name)
-                    onClose()
-                }.bounds(left, y, WIDTH, 20).build(),
-            )
+            val shown = if (name == highlighted) label.withStyle(ChatFormatting.YELLOW) else label
+            addRenderableWidget(Button.builder(shown) { onPick(name) }.bounds(left, y, WIDTH, 20).build())
             y += ROW
         }
         y += 4

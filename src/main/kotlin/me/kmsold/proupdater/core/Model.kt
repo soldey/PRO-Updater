@@ -65,10 +65,31 @@ class PendingActions {
     /** [FirstRunChoice.CUSTOM] or [FirstRunChoice.NONE] from the welcome screen; handled before everything else. */
     var firstRunChoice: String? = null
     var restoreBackup: String? = null
+
+    /** Only some mods' settings from a backup, after [restoreBackup]. */
+    var modRestore: ModRestore? = null
     var applyPackDefaults: Boolean = false
     var steps: MutableList<PendingStep> = mutableListOf()
 
-    fun isEmpty() = firstRunChoice == null && restoreBackup == null && !applyPackDefaults && steps.isEmpty()
+    fun isEmpty() = firstRunChoice == null && restoreBackup == null && modRestore == null && !applyPackDefaults && steps.isEmpty()
+}
+
+class ModRestore {
+    var backup: String = ""
+
+    /** The files to take from the backup, worked out when the player picked the mods. */
+    var paths: List<String> = emptyList()
+
+    /** The picked mods' names, for the screen and the chat. */
+    var mods: List<String> = emptyList()
+
+    companion object {
+        fun of(backup: String, paths: List<String>, mods: List<String>) = ModRestore().also {
+            it.backup = backup
+            it.paths = paths
+            it.mods = mods
+        }
+    }
 }
 
 class PendingStep {
@@ -119,6 +140,10 @@ object ModelJson {
                 if (value.migrations == null) value.migrations = mutableListOf()
             }
             is PendingActions -> {
+                value.modRestore?.let {
+                    if (it.backup == null || it.paths == null) value.modRestore = null
+                    else if (it.mods == null) it.mods = emptyList()
+                }
                 if (value.steps == null) value.steps = mutableListOf()
                 value.steps.removeAll { it == null || it.id.isNullOrBlank() }
                 value.steps.forEach { if (it.options == null) it.options = emptyMap() }

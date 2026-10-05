@@ -28,7 +28,7 @@ class ProUpdaterScreen(
     override fun init() {
         val left = width / 2 - WIDTH / 2
         val half = (WIDTH - 4) / 2
-        var y = maxOf(6, (height - (42 + 4 * ROW + 26)) / 2)
+        var y = maxOf(6, (height - (42 + 5 * ROW + 26)) / 2)
 
         addRenderableWidget(StringWidget(left, y, WIDTH, 9, title, font))
         y += 14
@@ -68,8 +68,34 @@ class ProUpdaterScreen(
         )
         addRenderableWidget(
             Button.builder(Component.translatable("proupdater.screen.restore")) {
-                McCompat.setScreen(BackupsScreen(this, panel))
+                McCompat.setScreen(
+                    BackupsScreen(
+                        this, panel,
+                        Component.translatable("proupdater.backups.title"),
+                        Component.translatable("proupdater.backups.hint"),
+                        highlighted = panel.pending.restoreBackup,
+                    ) { name ->
+                        panel.queueRestore(name)
+                        McCompat.setScreen(this)
+                    },
+                )
             }.bounds(left + half + 4, y, half, 20).build(),
+        )
+        y += ROW
+
+        addRenderableWidget(
+            Button.builder(Component.translatable("proupdater.screen.restoreMods")) {
+                McCompat.setScreen(
+                    BackupsScreen(
+                        this, panel,
+                        Component.translatable("proupdater.modRestore.pickTitle"),
+                        Component.translatable("proupdater.modRestore.pickHint"),
+                        highlighted = panel.pending.modRestore?.backup,
+                    ) { name -> McCompat.setScreen(ModRestoreScreen(McCompat.currentScreen ?: this, this, panel, name)) },
+                )
+            }.bounds(left, y, WIDTH, 20)
+                .tooltip(Tooltip.create(Component.translatable("proupdater.screen.restoreMods.tooltip")))
+                .build(),
         )
         y += ROW
 
@@ -130,6 +156,9 @@ class ProUpdaterScreen(
             val parts = buildList {
                 pending.firstRunChoice?.let { add(Component.translatable("proupdater.screen.queue.firstRun.$it")) }
                 pending.restoreBackup?.let { add(Component.translatable("proupdater.screen.queue.restore", it.removeSuffix(".zip"))) }
+                pending.modRestore?.let {
+                    add(Component.translatable("proupdater.screen.queue.modRestore", it.mods.size.toString(), it.backup.removeSuffix(".zip")))
+                }
                 if (pending.applyPackDefaults) add(Component.translatable("proupdater.screen.queue.applyPack"))
                 if (pending.steps.isNotEmpty()) add(Component.translatable("proupdater.screen.queue.steps", pending.steps.size.toString()))
             }

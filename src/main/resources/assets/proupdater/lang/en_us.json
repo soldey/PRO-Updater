@@ -90,5 +90,19 @@
     "proupdater.restart.title": "Restart needed",
     "proupdater.restart.text": "Your choice is applied the next time the game starts, before the mods load their settings. The current files are backed up first.",
     "proupdater.restart.quit": "Quit the game",
-    "proupdater.restart.later": "Later"
+    "proupdater.restart.later": "Later",
+    "proupdater.screen.restoreMods": "Restore mod settings...",
+    "proupdater.screen.restoreMods.tooltip": "Takes the settings of the mods you tick from any backup, on the next start. Everything else stays as it is.",
+    "proupdater.screen.queue.modRestore": "settings of %s mod(s) from %s",
+    "proupdater.modRestore.pickTitle": "Restore mod settings: pick a backup",
+    "proupdater.modRestore.pickHint": "Next you tick the mods whose settings to take from it.",
+    "proupdater.modRestore.title": "Restore from %s",
+    "proupdater.modRestore.hint": "The ticked mods get their settings from this backup on the next start. Everything else stays. Hover a mod to see its files.",
+    "proupdater.modRestore.all": "Select all",
+    "proupdater.modRestore.none": "Clear",
+    "proupdater.modRestore.apply": "Restore selected (%s)",
+    "proupdater.modRestore.page": "Page %s of %s",
+    "proupdater.modRestore.empty": "This backup has no settings files.",
+    "proupdater.modRestore.unreadable": "This backup could not be read.",
+    "proupdater.notice.modsRestored": "Settings restored from %2$s: %1$s."
 }
